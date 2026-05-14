@@ -1,0 +1,35 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      vendure:
+        patterns:
+          - "@vendure/*"
+      typescript-tooling:
+        patterns:
+          - "typescript"
+          - "ts-jest"
+          - "@types/*"
+          - "@typescript-eslint/*"
+          - "eslint*"
+          - "prettier"
+      jest:
+        patterns:
+          - "jest"
+          - "@types/jest"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "chore(actions)"
