@@ -40,15 +40,20 @@ import type { OpenSalesTaxPluginOptions } from './types';
   compatibility: '^3.0.0',
 })
 export class OpenSalesTaxPlugin {
-  /** Options stashed by `init()`. Read by the strategy at construction. */
-  static options: OpenSalesTaxPluginOptions = {};
+  // Backing field — writable only via init(). Public surface is readonly.
+  private static _options: OpenSalesTaxPluginOptions = {};
+
+  /** Options captured by the most recent `init()` call. Read-only. */
+  static get options(): Readonly<OpenSalesTaxPluginOptions> {
+    return OpenSalesTaxPlugin._options;
+  }
 
   /**
    * Merchant-facing configuration entry point. Pass options here in
    * `vendure-config.ts`; environment variables fill in any blanks.
    */
   static init(options: OpenSalesTaxPluginOptions = {}): typeof OpenSalesTaxPlugin {
-    OpenSalesTaxPlugin.options = options;
+    OpenSalesTaxPlugin._options = options;
     return OpenSalesTaxPlugin;
   }
 }

@@ -56,9 +56,7 @@ export function loadConfig(
     apiTokenRaw === undefined || apiTokenRaw === '' ? undefined : apiTokenRaw;
 
   const failHard =
-    options.failHard !== undefined
-      ? options.failHard
-      : env.OSTAX_FAIL_HARD === '1' || env.OSTAX_FAIL_HARD === 'true';
+    options.failHard ?? (env.OSTAX_FAIL_HARD === '1' || env.OSTAX_FAIL_HARD === 'true');
 
   const timeoutMsRaw = options.timeoutMs ?? parseEnvInt(env.OSTAX_TIMEOUT_MS);
   const timeoutMs = timeoutMsRaw ?? DEFAULT_TIMEOUT_MS;

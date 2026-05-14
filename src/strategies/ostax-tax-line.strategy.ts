@@ -107,11 +107,8 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
     const address = order.shippingAddress;
 
     // Gate 2: US ship-to only
-    if (!address || address.countryCode !== SUPPORTED_COUNTRY) {
-      Logger.debug(
-        `skip: country=${address?.countryCode ?? 'none'}`,
-        LOGGER_CTX,
-      );
+    if (address?.countryCode !== SUPPORTED_COUNTRY) {
+      Logger.debug(`skip: country=${address?.countryCode ?? 'none'}`, LOGGER_CTX);
       return [];
     }
 
@@ -139,10 +136,7 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
 
     const line = response.lines[0];
     if (!line || !Array.isArray(line.jurisdictions) || line.jurisdictions.length === 0) {
-      Logger.debug(
-        `engine returned no jurisdictions for zip=${zip5}; returning []`,
-        LOGGER_CTX,
-      );
+      Logger.debug(`engine returned no jurisdictions; returning []`, LOGGER_CTX);
       return [];
     }
 

@@ -85,7 +85,12 @@ export class OpenSalesTaxClient {
         `OpenSalesTax engine URL must use http: or https: (got ${parsed.protocol})`,
       );
     }
-    this.baseUrl = options.baseUrl.replace(/\/+$/, '');
+    // Strip trailing slashes without a quantified regex (avoids ReDoS class S5852).
+    let normalized = options.baseUrl;
+    while (normalized.endsWith('/')) {
+      normalized = normalized.slice(0, -1);
+    }
+    this.baseUrl = normalized;
     this.apiKey = options.apiKey;
     this.timeoutMs = options.timeoutMs ?? 5000;
   }
