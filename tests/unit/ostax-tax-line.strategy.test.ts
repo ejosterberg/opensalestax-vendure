@@ -1,0 +1,304 @@
+// SPDX-License-Identifier: Apache-2.0
+
+import nock from 'nock';
+import type {
+  CalculateTaxLinesArgs,
+  Injector,
+  Order,
+  OrderLine,
+  RequestContext,
+  TaxRate,
+} from '@vendure/core';
+
+import { OstaxTaxLineStrategy } from '../../src/strategies/ostax-tax-line.strategy';
+
+const BASE_URL = 'http://strategy-engine.example.test';
+
+function buildArgs(overrides: {
+  currencyCode?: string;
+  countryCode?: string | undefined;
+  postalCode?: string | undefined;
+  proratedUnitPrice?: number;
+}): CalculateTaxLinesArgs {
+  const ctx = { currencyCode: overrides.currencyCode ?? 'USD' } as Partial<RequestContext> as RequestContext;
+
+  const order = {
+    shippingAddress: {
+      countryCode: overrides.countryCode,
+      postalCode: overrides.postalCode,
+    },
+  } as Partial<Order> as Order;
+
+  const orderLine = {
+    proratedUnitPrice: overrides.proratedUnitPrice ?? 10000,
+  } as Partial<OrderLine> as OrderLine;
+
+  const applicableTaxRate = { value: 0, name: 'Placeholder' } as Partial<TaxRate> as TaxRate;
+
+  return { ctx, order, orderLine, applicableTaxRate };
+}
+
+const fakeInjector = {} as Injector;
+
+function sampleEngineResponse(jurisdictions: Array<{ type: string; name: string; rate_pct: string }>) {
+  return {
+    subtotal: '100.00',
+    tax_total: '0',
+    lines: [
+      {
+        amount: '100.00',
+        category: 'general',
+        tax: '0',
+        rate_pct: '0',
+        jurisdictions: jurisdictions.map((j) => ({ ...j, tax: '0' })),
+      },
+    ],
+  };
+}
+
+describe('OstaxTaxLineStrategy', () => {
+  beforeEach(() => {
+    nock.cleanAll();
+    nock.disableNetConnect();
+  });
+
+  afterAll(() => {
+    nock.enableNetConnect();
+  });
+
+  async function makeStrategy(opts: { failHard?: boolean } = {}) {
+    // The init() probe will hit /v1/health — answer it so init succeeds.
+    nock(BASE_URL).get('/v1/health').reply(200, {
+      status: 'ok',
+      version: '0.55.4',
+      database_connected: true,
+    });
+
+    const strategy = new OstaxTaxLineStrategy({
+      apiUrl: BASE_URL,
+      failHard: opts.failHard ?? false,
+    });
+    await strategy.init(fakeInjector);
+    return strategy;
+  }
+
+  describe('gating', () => {
+    it('returns [] for non-USD orders', async () => {
+      const strategy = await makeStrategy();
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'EUR', countryCode: 'US', postalCode: '55403' }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('returns [] for non-US shipping country', async () => {
+      const strategy = await makeStrategy();
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: 'CA', postalCode: 'M5V 3A8' }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('returns [] when shippingAddress is missing countryCode', async () => {
+      const strategy = await makeStrategy();
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: undefined, postalCode: '55403' }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('returns [] when ZIP is missing', async () => {
+      const strategy = await makeStrategy();
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: undefined }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('returns [] when ZIP is malformed', async () => {
+      const strategy = await makeStrategy();
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: 'ABCDE' }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('accepts ZIP+4 format (uses leading 5)', async () => {
+      const strategy = await makeStrategy();
+      nock(BASE_URL)
+        .post('/v1/calculate', (body) => body.address.zip5 === '55403')
+        .reply(200, sampleEngineResponse([{ type: 'STATE', name: 'Minnesota', rate_pct: '6.875' }]));
+
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: '55403-1234' }),
+      );
+      expect(lines).toHaveLength(1);
+      expect(lines[0]?.taxRate).toBe(6.875);
+    });
+  });
+
+  describe('happy path', () => {
+    it('calls OST and maps jurisdictions to TaxLine[]', async () => {
+      const strategy = await makeStrategy();
+      nock(BASE_URL)
+        .post('/v1/calculate', (body) => {
+          expect(body).toEqual({
+            address: { zip5: '55403' },
+            line_items: [{ amount: '100.00', category: 'general' }],
+          });
+          return true;
+        })
+        .reply(
+          200,
+          sampleEngineResponse([
+            { type: 'STATE', name: 'Minnesota', rate_pct: '6.875' },
+            { type: 'CITY', name: 'Minneapolis', rate_pct: '0.500' },
+            { type: 'TRANSIT', name: 'Hennepin Transit', rate_pct: '0.500' },
+          ]),
+        );
+
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          proratedUnitPrice: 10000,
+        }),
+      );
+
+      expect(lines).toHaveLength(3);
+      expect(lines.map((l) => l.taxRate).reduce((a, b) => a + b, 0)).toBeCloseTo(7.875, 4);
+      expect(lines[0]?.description).toContain('Minnesota');
+      expect(lines[1]?.description).toContain('Minneapolis');
+    });
+
+    it('returns [] when engine returns no jurisdictions', async () => {
+      const strategy = await makeStrategy();
+      nock(BASE_URL).post('/v1/calculate').reply(200, sampleEngineResponse([]));
+
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: '55403' }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('skips jurisdictions with non-positive rates', async () => {
+      const strategy = await makeStrategy();
+      nock(BASE_URL)
+        .post('/v1/calculate')
+        .reply(
+          200,
+          sampleEngineResponse([
+            { type: 'STATE', name: 'Oregon', rate_pct: '0' },
+            { type: 'STATE', name: 'Minnesota', rate_pct: '6.875' },
+          ]),
+        );
+
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: '55403' }),
+      );
+      expect(lines).toHaveLength(1);
+      expect(lines[0]?.description).toContain('Minnesota');
+    });
+
+    it('formats ProRated amount in dollars (cents → "X.XX")', async () => {
+      const strategy = await makeStrategy();
+      nock(BASE_URL)
+        .post('/v1/calculate', (body) => {
+          expect(body.line_items[0].amount).toBe('12.34');
+          return true;
+        })
+        .reply(200, sampleEngineResponse([]));
+
+      await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          proratedUnitPrice: 1234,
+        }),
+      );
+    });
+
+    it('handles single-digit cents correctly (5 cents → "0.05")', async () => {
+      const strategy = await makeStrategy();
+      nock(BASE_URL)
+        .post('/v1/calculate', (body) => {
+          expect(body.line_items[0].amount).toBe('0.05');
+          return true;
+        })
+        .reply(200, sampleEngineResponse([]));
+
+      await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          proratedUnitPrice: 5,
+        }),
+      );
+    });
+  });
+
+  describe('error handling', () => {
+    it('fail-soft (default): returns [] on engine 5xx', async () => {
+      const strategy = await makeStrategy({ failHard: false });
+      nock(BASE_URL).post('/v1/calculate').reply(503, 'down');
+
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: '55403' }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('fail-soft: returns [] on network error', async () => {
+      const strategy = await makeStrategy({ failHard: false });
+      nock(BASE_URL).post('/v1/calculate').replyWithError('ECONNREFUSED');
+
+      const lines = await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: '55403' }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('fail-hard: throws on engine 5xx', async () => {
+      const strategy = await makeStrategy({ failHard: true });
+      nock(BASE_URL).post('/v1/calculate').reply(500, '');
+
+      await expect(
+        strategy.calculate(
+          buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: '55403' }),
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('fail-hard: throws on network error', async () => {
+      const strategy = await makeStrategy({ failHard: true });
+      nock(BASE_URL).post('/v1/calculate').replyWithError('boom');
+
+      await expect(
+        strategy.calculate(
+          buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: '55403' }),
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('init() health check', () => {
+    it('does not throw when engine health probe fails', async () => {
+      // Health probe returns 503; strategy should still initialize
+      nock(BASE_URL).get('/v1/health').reply(503, '');
+
+      const strategy = new OstaxTaxLineStrategy({
+        apiUrl: BASE_URL,
+        failHard: false,
+      });
+      await expect(strategy.init(fakeInjector)).resolves.toBeUndefined();
+    });
+
+    it('throws at init when apiUrl is invalid', async () => {
+      const strategy = new OstaxTaxLineStrategy({ apiUrl: 'file:///etc/passwd' });
+      await expect(strategy.init(fakeInjector)).rejects.toThrow();
+    });
+  });
+});
