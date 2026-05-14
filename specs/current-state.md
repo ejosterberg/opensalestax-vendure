@@ -1,16 +1,14 @@
 # Current State — opensalestax-vendure
 
-**Last updated:** 2026-05-13 (post-v0.1.0 alpha, pre-v1.0.0 cut)
-**Status:** **v0.1.0 alpha shipped on GitHub.** Implementation
-complete, tests + lint + typecheck + audit + SonarQube all green,
-demo deployment verified end-to-end on Proxmox VM 915. Next:
-tag v1.0.0 and publish to NPM.
+**Last updated:** 2026-05-13 (v1.0.0 shipped to GitHub + NPM)
+**Status:** **v1.0.0 shipped.** Kickoff plan complete.
 
-## What's shipped (v0.1.0 alpha)
+## What's shipped (v1.0.0)
 
-GitHub: <https://github.com/ejosterberg/opensalestax-vendure>
-GitHub release: <https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v0.1.0>
-NPM: not yet — v1.0.0 stage 07 publishes.
+- GitHub: <https://github.com/ejosterberg/opensalestax-vendure>
+- GitHub release v1.0.0: <https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v1.0.0>
+- NPM: <https://www.npmjs.com/package/@ejosterberg/vendure-plugin-opensalestax> (`@ejosterberg/vendure-plugin-opensalestax@1.0.0`, public, Apache-2.0)
+- Trusted Publisher + `release.yml` workflow configured for hands-off OIDC publishing of every release after v1.0.0
 
 - `OpenSalesTaxPlugin` (`@VendurePlugin`-decorated) loadable in
   `vendure-config.ts`.

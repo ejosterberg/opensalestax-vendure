@@ -3,75 +3,29 @@
 > **Read first if you're a fresh agent.** Constitution + current-state +
 > this file are the canonical bring-up sequence.
 
-## You are here — 2026-05-13 (v0.1.0 alpha shipped, v1.0.0 pending tag)
+## You are here — 2026-05-13 (v1.0.0 shipped, kickoff complete)
 
-The Vendure plugin **alpha is shipped on GitHub**:
-<https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v0.1.0>.
-Implementation is complete, all quality + security gates are
-green, and an end-to-end demo on Proxmox VM 915
-(`vendure-demo`, 10.32.161.39) confirmed a $100 MN order returns
-correct per-jurisdiction tax through the full stack.
+The Vendure plugin **v1.0.0 is shipped to GitHub + NPM**:
+- GitHub: <https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v1.0.0>
+- NPM: <https://www.npmjs.com/package/@ejosterberg/vendure-plugin-opensalestax>
 
-The remaining stage of the original kickoff is **stage 07**:
-tag v1.0.0, push tag, create GitHub release, `npm publish
---access public`. After that the kickoff plan is concluded and
-the v1.1 backlog opens.
+The original kickoff plan (stages 00-07) is complete. The
+`kickoff/` directory has been archived to `kickoff-archive/`.
 
-## What's next — v1.0.0 release (stage 07 of `kickoff/`)
+A `release.yml` GitHub Actions workflow is in place that runs
+the full quality gate then publishes to NPM via OIDC + Sigstore
+provenance whenever a `v*.*.*` tag is pushed. No manual `npm
+publish` after v1.0.0 — see `~/.claude/projects/.../memory/`
+for Eric's NPM publishing procedure (Phase 1 = manual bootstrap
+done; Phase 2 = OIDC for every subsequent release).
 
-Atomic checklist (15-30 min total):
+## What's next — v1.1 backlog
 
-### 1. Sanity checks
-
-- [ ] `git status` clean
-- [ ] `npm run check` green locally
-- [ ] `gh run list --branch main --limit 1` green
-- [ ] CHANGELOG `[Unreleased]` is empty / has only post-v0.1.0
-  internal items
-
-### 2. Promote CHANGELOG `[0.1.0]` → `[1.0.0]`
-
-The 0.1.0 entry already documents what's in the box. v1.0.0
-is essentially "alpha promoted to stable after security review
-+ demo verification" — no new features. Add a new section that
-notes the promotion and links to the audit.
-
-### 3. Bump version + commit
-
-```
-npm version 1.0.0 --no-git-tag-version
-git add package.json package-lock.json CHANGELOG.md
-git commit -s -m "chore: release v1.0.0"
-git push
-```
-
-Wait for CI green on this commit.
-
-### 4. Tag + push tag + GitHub release
-
-```
-git tag -s v1.0.0 -m "v1.0.0 — first production release"   # -a if no GPG
-git push origin v1.0.0
-gh release create v1.0.0 --title "..." --notes-file <(...)
-```
-
-### 5. NPM publish (Decision X — required, not optional)
-
-```
-npm login                                # if not already authed
-npm info @ejosterberg/vendure-plugin-opensalestax || echo "name free"
-npm publish --access public
-```
-
-Verify on
-<https://www.npmjs.com/package/@ejosterberg/vendure-plugin-opensalestax>.
-
-### 6. Wrap-up
-
-- [ ] Update `specs/current-state.md` (move v1.0.0 → "Shipped")
-- [ ] Update this `handoff.md` to point at the v1.1 backlog
-- [ ] `git mv kickoff kickoff-archive` + commit
-- [ ] Brief Eric: release URL, NPM URL, demo VM, summary numbers
+Pick the top item that interests you (or that Eric names) and
+follow the spec-kit pattern: draft `specs/phase-NN-<slug>/spec.md`
++ `plan.md` + `tasks.md`, implement TDD-style, run `npm run
+check`, push, let `release.yml` cut the version when the tag
+goes up.
 
 ## v1.1 candidate queue (priority order)
 
