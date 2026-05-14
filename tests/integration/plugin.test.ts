@@ -28,6 +28,7 @@ import * as path from 'node:path';
 
 import { OpenSalesTaxPlugin } from '../../src';
 import { OstaxTaxLineStrategy } from '../../src/strategies/ostax-tax-line.strategy';
+import { OstaxTaxZoneStrategy } from '../../src/strategies/ostax-tax-zone.strategy';
 
 const minimalInitialData: InitialData = {
   defaultLanguage: LanguageCode.en,
@@ -95,5 +96,11 @@ describe('OpenSalesTaxPlugin (integration)', () => {
     const configService = server.app.get(ConfigService);
     const strategy = configService.taxOptions.taxLineCalculationStrategy;
     expect(strategy).toBeInstanceOf(OstaxTaxLineStrategy);
+  });
+
+  it('registers OstaxTaxZoneStrategy as the active taxZoneStrategy', () => {
+    const configService = server.app.get(ConfigService);
+    const strategy = configService.taxOptions.taxZoneStrategy;
+    expect(strategy).toBeInstanceOf(OstaxTaxZoneStrategy);
   });
 });

@@ -67,20 +67,29 @@ export OSTAX_API_URL="https://ost.your-domain.com"
 # export OSTAX_TIMEOUT_MS=5000
 ```
 
-### 4. Configure a US tax zone in Vendure Admin (one-time)
+### 4. (Recommended) Create a US Zone in Vendure Admin
+
+As of v1.1.0 this step is **optional** — the plugin's
+`OstaxTaxZoneStrategy` auto-resolves the active zone for US
+shipping addresses, so checkout works even with a fresh
+Vendure install. Still, having a real Zone is best practice.
 
 In the Admin UI:
 
-1. **Settings → Zones** → Add a Zone "US" with United States as
-   the sole member country
+1. **Settings → Zones** → Add a Zone with United States as a
+   member country (name it whatever you like).
 2. **Settings → Tax Categories** → Confirm "Standard" exists
+   (or create it).
 3. **Settings → Tax Rates** → Create a placeholder rate
-   "US Standard" of `0%` in zone US, category Standard. (OST
-   provides the real rate via the strategy; this placeholder
-   exists so Vendure's normal pipeline always has something to
-   fall back to.)
-4. **Settings → Channels → Default channel** → Set default tax
-   zone to "US"
+   "US Standard" of `0%` in your US zone, category Standard.
+   (OST provides the real rate via the strategy; this
+   placeholder exists so Vendure's normal pipeline always has
+   something to fall back to.)
+
+If you skip this step, the plugin will log a one-time WARN at
+startup recommending you create a US Zone, and checkout will
+fall through to your channel's default Zone — taxes still
+flow from the OST engine either way.
 
 ### 5. Restart Vendure
 
@@ -143,6 +152,8 @@ Options passed to `init()` take priority over env vars.
 │  ┌─────────────────────────────────────────┐    │
 │  │ Order checkout flow                     │    │
 │  │  ↓                                      │    │
+│  │ TaxZoneStrategy.determineTaxZone()      │    │
+│  │  ↓ (US ship-to → US Zone, else default) │    │
 │  │ TaxLineCalculationStrategy.calculate()  │    │
 │  │  ↓                                      │    │
 │  │ OstaxTaxLineStrategy                    │    │
@@ -151,6 +162,18 @@ Options passed to `init()` take priority over env vars.
 │  └─────────────────────────────────────────┘    │   (merchant-self-hosted)
 └─────────────────────────────────────────────────┘
 ```
+
+The plugin registers two strategies:
+
+- **`OstaxTaxZoneStrategy`** (added in v1.1.0): inspects the
+  order's shipping country code; if it's `US`, finds a Zone
+  whose members include the United States and returns it; if
+  no US Zone exists, returns the channel's default Zone (with
+  a one-time WARN suggesting you create one). For non-US
+  orders, returns the channel default unchanged.
+- **`OstaxTaxLineStrategy`**: per-line tax calculation against
+  the OST engine, gated on USD currency + US shipping country
+  + valid ZIP regex.
 
 For each order line, the plugin:
 
@@ -190,6 +213,14 @@ Possible causes:
 4. The order's `currencyCode` is not `"USD"`.
 5. The OST engine has no rate data for the destination ZIP
    (rare; check engine logs).
+
+### "I see a one-time WARN about no US Zone"
+
+Expected if you haven't created a Zone with United States as
+a member. Checkout still works — the plugin falls through to
+your channel's default Zone. To silence the WARN, create a
+US Zone in `Settings → Zones`. The WARN is rate-limited to
+once per process so it won't flood your logs.
 
 ### "I want errors to surface, not silently fall back"
 

@@ -1,8 +1,9 @@
 # ADR 002 — Defer `TaxZoneStrategy` to v1.1
 
 **Date:** 2026-05-13
-**Status:** Accepted
+**Status:** Accepted (then superseded by ADR-004 on 2026-05-13)
 **Context stage:** kickoff stage 02 (build alpha)
+**Superseded by:** ADR-004 — `TaxZoneStrategy` shipped in v1.1.0
 
 ## Decision
 

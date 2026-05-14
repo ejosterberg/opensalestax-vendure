@@ -3,6 +3,7 @@
 import { PluginCommonModule, VendurePlugin } from '@vendure/core';
 
 import { OstaxTaxLineStrategy } from './strategies/ostax-tax-line.strategy';
+import { OstaxTaxZoneStrategy } from './strategies/ostax-tax-zone.strategy';
 import type { OpenSalesTaxPluginOptions } from './types';
 
 /**
@@ -35,6 +36,7 @@ import type { OpenSalesTaxPluginOptions } from './types';
     config.taxOptions.taxLineCalculationStrategy = new OstaxTaxLineStrategy(
       OpenSalesTaxPlugin.options,
     );
+    config.taxOptions.taxZoneStrategy = new OstaxTaxZoneStrategy();
     return config;
   },
   compatibility: '^3.0.0',

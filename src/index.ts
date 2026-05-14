@@ -15,6 +15,7 @@
 
 export { OpenSalesTaxPlugin } from './opensalestax.plugin';
 export { OstaxTaxLineStrategy } from './strategies/ostax-tax-line.strategy';
+export { OstaxTaxZoneStrategy } from './strategies/ostax-tax-zone.strategy';
 export { loadConfig } from './lib/config';
 export {
   OpenSalesTaxClient,

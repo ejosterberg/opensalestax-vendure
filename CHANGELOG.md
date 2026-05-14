@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-13
+
+### Added
+- `OstaxTaxZoneStrategy` implementing Vendure's `TaxZoneStrategy`
+  interface. The plugin now auto-routes US shipping orders to
+  any Zone the merchant has configured with the United States
+  as a member country, removing the manual "set
+  `channel.defaultTaxZone = US`" step from the README quickstart.
+- WeakMap-based memoization keyed on the `Zone[]` array
+  reference so the hot-path `determineTaxZone` call collapses
+  per-request scans to a single lookup.
+- One-shot WARN at first miss when a US ship-to order arrives
+  but no US-containing Zone exists in the merchant's data
+  (rate-limited to once per process). Checkout still works via
+  fallback to the channel's default Zone.
+- Re-export `OstaxTaxZoneStrategy` from `src/index.ts` for
+  advanced users who want to subclass it.
+- ADR-004 documenting the supersession of ADR-002.
+
+### Changed
+- README quickstart step 4 ("Configure a US tax zone") is now
+  marked optional/recommended rather than required. Updated
+  the "How it works" diagram to show both strategies in the
+  pipeline.
+- Troubleshooting section gains an entry for the new "no US
+  Zone" WARN message.
+
+### Compatibility
+- Non-breaking. Merchants on v1.0.0 who manually configured a
+  US Zone keep working unchanged; the new strategy finds the
+  same zone they configured.
+
 ## [1.0.0] - 2026-05-13
 
 ### Changed
@@ -67,6 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   descriptions, product names, and customer email are never
   logged.
 
-[Unreleased]: https://github.com/ejosterberg/opensalestax-vendure/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/ejosterberg/opensalestax-vendure/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/ejosterberg/opensalestax-vendure/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ejosterberg/opensalestax-vendure/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v0.1.0
