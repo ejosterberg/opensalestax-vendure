@@ -1,119 +1,117 @@
 # Current State — opensalestax-vendure
 
-**Last updated:** 2026-05-13 (project scaffolded)
-**Status:** **Pre-alpha — specs scaffolded; no code yet.** Eric
-confirmed architecture (Vendure plugin via `@VendurePlugin`,
-in-process `TaxLineCalculationStrategy`, merchant self-hosted
-via NPM). Next step: scaffold `package.json` + source layout,
-then implement v0.1.0 alpha (strategy that calls OST engine,
-integration test via `@vendure/testing`).
+**Last updated:** 2026-05-13 (post-v0.1.0 alpha, pre-v1.0.0 cut)
+**Status:** **v0.1.0 alpha shipped on GitHub.** Implementation
+complete, tests + lint + typecheck + audit + SonarQube all green,
+demo deployment verified end-to-end on Proxmox VM 915. Next:
+tag v1.0.0 and publish to NPM.
 
-## Where the upstream engine is
+## What's shipped (v0.1.0 alpha)
 
-OpenSalesTax engine — same instance the other connectors point at.
-Pin in production: **v0.22+** (pre-v0.22 had the SD-state-bleed
-bug, closed in v0.22.0). Tested-against version pinned per release.
-v1 HTTP API: `POST /v1/calculate`, `GET /v1/health`,
-`GET /v1/states`, `GET /v1/rates`.
+GitHub: <https://github.com/ejosterberg/opensalestax-vendure>
+GitHub release: <https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v0.1.0>
+NPM: not yet — v1.0.0 stage 07 publishes.
 
-## Where the platform is
+- `OpenSalesTaxPlugin` (`@VendurePlugin`-decorated) loadable in
+  `vendure-config.ts`.
+- `OstaxTaxLineStrategy` implementing
+  `TaxLineCalculationStrategy` from `@vendure/core`. Per-line
+  call to OST `/v1/calculate`; maps each jurisdiction to a
+  Vendure `TaxLine`.
+- USD-only / US-only gating per constitution §5; non-USD/non-US
+  returns `[]` so Vendure's built-in `TaxRate` pipeline handles
+  the fallback.
+- Fail-soft default; fail-hard via `OSTAX_FAIL_HARD=1` env or
+  `init({ failHard: true })`.
+- Boot-time `/v1/health` probe so engine reachability problems
+  surface at server-start.
+- 60 tests (58 unit + 2 integration via `@vendure/testing`):
+  - `tests/unit/ostax-client.test.ts` — 12 tests
+  - `tests/unit/config.test.ts` — 24 tests
+  - `tests/unit/ostax-tax-line.strategy.test.ts` — 22 tests
+  - `tests/integration/plugin.test.ts` — 2 tests
+- CI workflow at `.github/workflows/ci.yml` runs lint /
+  typecheck / test / audit / build on every push to `main` and
+  every PR. All runs green.
+- Apache-2.0 license, SPDX headers on every source file, DCO
+  sign-off on every commit, no AI co-author trailers.
+- Coverage: 91.0% lines, 80.21% branches.
 
-Vendure — **v3.0+** target floor. Vendure's plugin API evolved
-significantly between v1 and v3; `TaxLineCalculationStrategy`
-and `TaxZoneStrategy` as documented in v3 are the modern
-extension points. Stage 00 should re-verify the target major is
-still v3 (or whatever Vendure's current LTS is at session
-start).
+## Quality + security baseline
 
-Strategy interfaces the plugin implements:
+| Metric | Value |
+|--------|-------|
+| `npm run check` | green |
+| CI on `main` HEAD | green |
+| SonarQube bugs | 0 |
+| SonarQube vulnerabilities | 0 |
+| SonarQube code smells | 0 |
+| SonarQube security hotspots | 0 |
+| Reliability rating | A (1.0) |
+| Security rating | A (1.0) |
+| Maintainability (sqale) | A (1.0) |
+| `npm audit --omit=dev --audit-level=high` | 0 vulnerabilities |
 
-- `TaxLineCalculationStrategy` — given an `OrderLine` +
-  `TaxCategory` + `Zone` + context, return a `TaxLine[]` with
-  computed tax. **Required.**
-- `TaxZoneStrategy` — given an order's ship-to address,
-  determine the active `Zone` (helps Vendure pick which tax
-  category applies). **Optional** for v0.1; useful when the
-  merchant hasn't pre-configured a US tax zone.
+Security audit recorded in
+`specs/security/audit-2026-05-13.md` (initial scan + post-fix
+re-scan, both clean after applying the documented fixes).
 
-Both strategies run synchronously in the order-creation /
-order-modification path. Vendure expects them to return
-promptly (target ≤2 s with OST's typical ~50-200 ms RTT).
+## Demo deployment
 
-## What's shipped
+| Field | Value |
+|-------|-------|
+| VMID | 915 |
+| Name | `vendure-demo` |
+| Host | pmvm1 (Proxmox) |
+| IP | 10.32.161.39 |
+| Stack | Debian 13, Node 20, Vendure 3.6.3 + plugin v0.1.0 |
+| OST engine | shared `http://10.32.161.126:8080` v0.55.4 |
 
-(Nothing yet — this is the project's first session.)
+End-to-end test passed: $100 USD order shipped to Minneapolis
+MN 55403 returns six tax lines summing to 9.025% via the OST
+engine (`totalWithTax = $109.03`). See `specs/demo-deployment.md`.
 
-## What's planned (in order)
+## Architecture decisions on file
 
-### v0.1.0 alpha (this session or next)
+| ADR | Title | Status |
+|-----|-------|--------|
+| 001 | Target Vendure 3.x | Accepted |
+| 002 | Defer `TaxZoneStrategy` to v1.1 | Accepted |
+| 003 | Defer Vendure Hub listing to v1.1 | Accepted |
 
-- `package.json` with `@vendure/core` as a peerDep + `@vendure/testing` as devDep
-- `tsconfig.json` (strict) + `jest.config.js` + `.eslintrc` + `.prettierrc`
-- `src/lib/ostax-client.ts` — minimal HTTP client lifted from the
-  Medusa connector's `client.ts` (~130 lines), with a
-  `healthCheck()` method added
-- `src/lib/config.ts` — typed loader merging
-  `OpenSalesTaxPlugin.init(options)` with env-var defaults;
-  fails fast on missing / invalid input
-- `src/opensalestax.plugin.ts` — the `@VendurePlugin` class with
-  `init(options)` static + `providers` array registering the
-  strategies
-- `src/strategies/ostax-tax-line.strategy.ts` — implements
-  `TaxLineCalculationStrategy`; gates on USD + US ship-to, calls
-  OST, returns `TaxLine[]`
-- `src/strategies/ostax-tax-zone.strategy.ts` (optional) —
-  implements `TaxZoneStrategy` for US zone mapping
-- `src/index.ts` — re-exports `OpenSalesTaxPlugin`, the strategy
-  classes, and the options type
-- `tests/unit/*.test.ts` — Jest unit tests for client, strategy,
-  config validation
-- `tests/integration/plugin.test.ts` — `@vendure/testing` harness
-  spins up Vendure, registers the plugin, places an order with a
-  MN ship-to, asserts nonzero tax
-- `README.md` with install + configuration walkthrough
-- Apache-2.0 LICENSE + SPDX headers + CONTRIBUTING.md (DCO)
+## What's planned next
 
-### v0.2 polish queue (after v0.1 alpha ships)
+### v1.0.0 — pending stage 07 of the kickoff
 
-- Vendure Hub listing submission (curated listing at
-  https://vendure.io/hub — manual review, not gated on this
-  alpha)
-- Tax category mapping (Vendure's `TaxCategory` records → OST's
-  six categories — same shape as the WooCom v0.3.3 / Odoo v0.1.13
-  pattern)
-- Per-state nexus filter (matches Odoo v0.3.0)
-- Operator telemetry — last successful calc, failure streak;
-  surface via a Vendure admin UI extension or job-queue events
-- Exemption-certificate handling
-- Optional admin UI panel via Vendure's UI extensions framework
+Pure mechanical: tag v1.0.0, push tag, GitHub release notes,
+`npm publish --access public`. Update CHANGELOG, update
+current-state + handoff, archive `kickoff/`.
 
-## Spec-folder map
+### v1.1 candidate queue (priority order)
 
-| File | Purpose |
-|---|---|
-| `specs/constitution.md` | Non-negotiable principles (license, architecture, USD-only) |
-| `specs/current-state.md` | This file — snapshot for fresh sessions |
-| `specs/handoff.md` | What the next session should pick up |
-| `specs/research/vendure-tax-plugin.md` | Vendure's plugin + strategy framework — APIs, lifecycle, testing harness |
-| `specs/phase-01-alpha/spec.md` | v0.1.0 user stories + functional requirements |
-| `specs/phase-01-alpha/plan.md` | Implementation plan — file layout, dependencies, test strategy |
-| `specs/phase-01-alpha/tasks.md` | Atomic, ordered task list |
-
-(The `phase-01-alpha/` directory is created when the design is
-locked. As of 2026-05-13 it's not yet populated — that's the next
-session's first job.)
+1. **Vendure Hub listing submission** (deferred per ADR-003)
+2. **`TaxZoneStrategy`** auto-resolver (deferred per ADR-002)
+3. **Per-product tax category mapping** —
+   `categoryByProductTypeId` similar to the Medusa pattern
+4. **Per-state nexus filter** — opt-in/opt-out by state
+5. **Request-scoped batch caching** — N order lines = N OST
+   calls today; v1.1 can collapse to one per request via
+   Vendure's `RequestContext` lifecycle
+6. **Embedded admin-UI panel** via Vendure UI extensions
+7. **Operator telemetry** — last-success / failure-streak
+   counters surfaced via UI extension or job queue events
 
 ## Sibling-project map
 
 | Path | Stack | State |
 |---|---|---|
-| `opensalestax-Odoo/` | Planning hub | active (drives all connector projects) |
+| `opensalestax-Odoo/` | Planning hub | active |
 | `opensalestax-python/` | Python SDK | shipped to PyPI |
 | `opensalestax-odoo-src/` | Odoo connector | v0.4.1 shipped on PyPI; OCA PR queued |
-| `opensalestax-medusa/` | Medusa v2 plugin | shipped; NPM `@ejosterberg/medusa-plugin-opensalestax` |
+| `opensalestax-medusa/` | Medusa v2 plugin | shipped on NPM |
 | `opensalestax-woocommerce/` | WordPress plugin | shipped |
-| `opensalestax-stripe-php/` | Stripe-PHP connector | shipped, private repo pending Packagist flip |
-| `opensalestax-php/` | PHP SDK | shipped, private repo pending Packagist flip |
-| `opensalestax-saleor/` | Saleor Tax App | pre-alpha, specs + kickoff |
-| `opensalestax-magento/` | Magento module | pre-alpha, specs + kickoff |
-| `opensalestax-vendure/` | **THIS** — Vendure plugin | pre-alpha, specs only |
+| `opensalestax-stripe-php/` | Stripe-PHP connector | shipped (private repo) |
+| `opensalestax-php/` | PHP SDK | shipped (private repo) |
+| `opensalestax-saleor/` | Saleor Tax App | pre-alpha |
+| `opensalestax-magento/` | Magento module | pre-alpha |
+| `opensalestax-vendure/` | **THIS** — Vendure plugin | **v0.1.0 alpha shipped** |
