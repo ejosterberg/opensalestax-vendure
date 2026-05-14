@@ -1,11 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import type { LoadedConfig, OpenSalesTaxPluginOptions } from '../types';
+import type { LoadedConfig, OpenSalesTaxCategory, OpenSalesTaxPluginOptions } from '../types';
 
 /** Allowed URL schemes for the engine endpoint. SSRF mitigation. */
 const ALLOWED_SCHEMES = new Set(['http:', 'https:']);
 
 const DEFAULT_TIMEOUT_MS = 5000;
+
+/** OST engine's accepted tax category strings. Empty string = skip line. */
+const VALID_CATEGORIES: ReadonlySet<OpenSalesTaxCategory> = new Set([
+  'general',
+  'clothing',
+  'groceries',
+  'prescription_drugs',
+  'prepared_food',
+  'digital_goods',
+  '',
+]);
+
+function formatValidCategories(): string {
+  return [...VALID_CATEGORIES].map((c) => (c === '' ? "'' (skip line)" : c)).join(', ');
+}
 
 /**
  * Merges `OpenSalesTaxPlugin.init({...})` options with environment
@@ -67,11 +82,41 @@ export function loadConfig(
     );
   }
 
+  // Validate categoryByTaxCategoryName: every value must be a known OST category or ''.
+  const rawMapping = options.categoryByTaxCategoryName ?? {};
+  const invalidPairings: string[] = [];
+  for (const [name, cat] of Object.entries(rawMapping)) {
+    if (!VALID_CATEGORIES.has(cat)) {
+      invalidPairings.push(`"${name}" => "${String(cat)}"`);
+    }
+  }
+  if (invalidPairings.length > 0) {
+    throw new Error(
+      '@ejosterberg/vendure-plugin-opensalestax: invalid OST category in ' +
+        `categoryByTaxCategoryName: ${invalidPairings.join(', ')}. ` +
+        `Valid categories: ${formatValidCategories()}.`,
+    );
+  }
+  const categoryByTaxCategoryName = Object.freeze({ ...rawMapping }) as Readonly<
+    Record<string, OpenSalesTaxCategory>
+  >;
+
+  // Validate defaultCategory.
+  const defaultCategory = options.defaultCategory ?? 'general';
+  if (!VALID_CATEGORIES.has(defaultCategory)) {
+    throw new Error(
+      '@ejosterberg/vendure-plugin-opensalestax: invalid defaultCategory ' +
+        `"${String(defaultCategory)}". Valid categories: ${formatValidCategories()}.`,
+    );
+  }
+
   return Object.freeze({
     apiUrl,
     apiToken,
     failHard,
     timeoutMs,
+    categoryByTaxCategoryName,
+    defaultCategory,
   });
 }
 

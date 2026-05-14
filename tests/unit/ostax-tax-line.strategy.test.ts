@@ -19,6 +19,7 @@ function buildArgs(overrides: {
   countryCode?: string | undefined;
   postalCode?: string | undefined;
   proratedUnitPrice?: number;
+  taxCategoryName?: string;
 }): CalculateTaxLinesArgs {
   const ctx = { currencyCode: overrides.currencyCode ?? 'USD' } as Partial<RequestContext> as RequestContext;
 
@@ -33,7 +34,13 @@ function buildArgs(overrides: {
     proratedUnitPrice: overrides.proratedUnitPrice ?? 10000,
   } as Partial<OrderLine> as OrderLine;
 
-  const applicableTaxRate = { value: 0, name: 'Placeholder' } as Partial<TaxRate> as TaxRate;
+  const applicableTaxRate = {
+    value: 0,
+    name: 'Placeholder',
+    ...(overrides.taxCategoryName !== undefined
+      ? { category: { name: overrides.taxCategoryName } }
+      : {}),
+  } as Partial<TaxRate> as TaxRate;
 
   return { ctx, order, orderLine, applicableTaxRate };
 }
@@ -66,7 +73,11 @@ describe('OstaxTaxLineStrategy', () => {
     nock.enableNetConnect();
   });
 
-  async function makeStrategy(opts: { failHard?: boolean } = {}) {
+  async function makeStrategy(opts: {
+    failHard?: boolean;
+    categoryByTaxCategoryName?: Record<string, string>;
+    defaultCategory?: string;
+  } = {}) {
     // The init() probe will hit /v1/health — answer it so init succeeds.
     nock(BASE_URL).get('/v1/health').reply(200, {
       status: 'ok',
@@ -77,6 +88,12 @@ describe('OstaxTaxLineStrategy', () => {
     const strategy = new OstaxTaxLineStrategy({
       apiUrl: BASE_URL,
       failHard: opts.failHard ?? false,
+      ...(opts.categoryByTaxCategoryName
+        ? { categoryByTaxCategoryName: opts.categoryByTaxCategoryName as Record<string, never> }
+        : {}),
+      ...(opts.defaultCategory !== undefined
+        ? { defaultCategory: opts.defaultCategory as never }
+        : {}),
     });
     await strategy.init(fakeInjector);
     return strategy;
@@ -281,6 +298,96 @@ describe('OstaxTaxLineStrategy', () => {
           buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: '55403' }),
         ),
       ).rejects.toThrow();
+    });
+  });
+
+  describe('category mapping (phase 03)', () => {
+    it('uses the mapped OST category when TaxCategory name matches', async () => {
+      const strategy = await makeStrategy({
+        categoryByTaxCategoryName: { Clothing: 'clothing' },
+      });
+      nock(BASE_URL)
+        .post('/v1/calculate', (body) => {
+          expect(body.line_items[0].category).toBe('clothing');
+          return true;
+        })
+        .reply(200, sampleEngineResponse([{ type: 'STATE', name: 'Minnesota', rate_pct: '6.875' }]));
+
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          taxCategoryName: 'Clothing',
+        }),
+      );
+      expect(lines).toHaveLength(1);
+    });
+
+    it('falls back to defaultCategory when TaxCategory name does not match the mapping', async () => {
+      const strategy = await makeStrategy({
+        categoryByTaxCategoryName: { Clothing: 'clothing' },
+        defaultCategory: 'general',
+      });
+      nock(BASE_URL)
+        .post('/v1/calculate', (body) => {
+          expect(body.line_items[0].category).toBe('general');
+          return true;
+        })
+        .reply(200, sampleEngineResponse([{ type: 'STATE', name: 'Minnesota', rate_pct: '6.875' }]));
+
+      await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          taxCategoryName: 'Standard',
+        }),
+      );
+    });
+
+    it("uses 'general' when no mapping and no defaultCategory are provided (preserves v1.0 behavior)", async () => {
+      const strategy = await makeStrategy();
+      nock(BASE_URL)
+        .post('/v1/calculate', (body) => {
+          expect(body.line_items[0].category).toBe('general');
+          return true;
+        })
+        .reply(200, sampleEngineResponse([{ type: 'STATE', name: 'Minnesota', rate_pct: '6.875' }]));
+
+      await strategy.calculate(
+        buildArgs({ currencyCode: 'USD', countryCode: 'US', postalCode: '55403' }),
+      );
+    });
+
+    it("returns [] without calling the engine when mapped category is '' (skip-line)", async () => {
+      const strategy = await makeStrategy({
+        categoryByTaxCategoryName: { 'Gift Cards': '' },
+      });
+      // No nock interceptor for /v1/calculate — if the engine is called, the
+      // request will fail with an unmatched-request error and the test fails.
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          taxCategoryName: 'Gift Cards',
+        }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it("returns [] without calling the engine when defaultCategory is '' and no mapping match", async () => {
+      const strategy = await makeStrategy({ defaultCategory: '' });
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          taxCategoryName: 'Anything',
+        }),
+      );
+      expect(lines).toEqual([]);
     });
   });
 

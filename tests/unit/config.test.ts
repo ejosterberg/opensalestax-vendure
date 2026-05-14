@@ -175,4 +175,127 @@ describe('loadConfig', () => {
       expect(Object.isFrozen(cfg)).toBe(true);
     });
   });
+
+  describe('categoryByTaxCategoryName', () => {
+    it('defaults to an empty mapping when not provided', () => {
+      const cfg = loadConfig({ apiUrl: 'https://x.test' }, emptyEnv);
+      expect(cfg.categoryByTaxCategoryName).toEqual({});
+    });
+
+    it('accepts an empty mapping explicitly', () => {
+      const cfg = loadConfig(
+        { apiUrl: 'https://x.test', categoryByTaxCategoryName: {} },
+        emptyEnv,
+      );
+      expect(cfg.categoryByTaxCategoryName).toEqual({});
+    });
+
+    it('accepts all six valid OST categories plus the empty-string skip', () => {
+      const cfg = loadConfig(
+        {
+          apiUrl: 'https://x.test',
+          categoryByTaxCategoryName: {
+            A: 'general',
+            B: 'clothing',
+            C: 'groceries',
+            D: 'prescription_drugs',
+            E: 'prepared_food',
+            F: 'digital_goods',
+            G: '',
+          },
+        },
+        emptyEnv,
+      );
+      expect(cfg.categoryByTaxCategoryName).toEqual({
+        A: 'general',
+        B: 'clothing',
+        C: 'groceries',
+        D: 'prescription_drugs',
+        E: 'prepared_food',
+        F: 'digital_goods',
+        G: '',
+      });
+    });
+
+    it('throws on an invalid OST category in the mapping', () => {
+      expect(() =>
+        loadConfig(
+          {
+            apiUrl: 'https://x.test',
+            categoryByTaxCategoryName: { Standard: 'not_a_category' as never },
+          },
+          emptyEnv,
+        ),
+      ).toThrow(/invalid OST category/i);
+    });
+
+    it('error message lists every bad pairing, not just the first', () => {
+      let err: unknown;
+      try {
+        loadConfig(
+          {
+            apiUrl: 'https://x.test',
+            categoryByTaxCategoryName: {
+              Standard: 'not_a_category' as never,
+              Reduced: 'also_invalid' as never,
+              Clothing: 'clothing',
+            },
+          },
+          emptyEnv,
+        );
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeInstanceOf(Error);
+      const msg = err instanceof Error ? err.message : '';
+      expect(msg).toContain('Standard');
+      expect(msg).toContain('Reduced');
+      expect(msg).not.toContain('Clothing');
+    });
+
+    it('returns a frozen mapping (mutation throws in strict mode)', () => {
+      const cfg = loadConfig(
+        {
+          apiUrl: 'https://x.test',
+          categoryByTaxCategoryName: { Standard: 'general' },
+        },
+        emptyEnv,
+      );
+      expect(Object.isFrozen(cfg.categoryByTaxCategoryName)).toBe(true);
+    });
+  });
+
+  describe('defaultCategory', () => {
+    it("defaults to 'general'", () => {
+      const cfg = loadConfig({ apiUrl: 'https://x.test' }, emptyEnv);
+      expect(cfg.defaultCategory).toBe('general');
+    });
+
+    it('accepts any of the 7 valid values', () => {
+      for (const value of [
+        'general',
+        'clothing',
+        'groceries',
+        'prescription_drugs',
+        'prepared_food',
+        'digital_goods',
+        '',
+      ] as const) {
+        const cfg = loadConfig(
+          { apiUrl: 'https://x.test', defaultCategory: value },
+          emptyEnv,
+        );
+        expect(cfg.defaultCategory).toBe(value);
+      }
+    });
+
+    it('throws on an invalid defaultCategory', () => {
+      expect(() =>
+        loadConfig(
+          { apiUrl: 'https://x.test', defaultCategory: 'pizza' as never },
+          emptyEnv,
+        ),
+      ).toThrow(/invalid defaultCategory/i);
+    });
+  });
 });

@@ -141,8 +141,64 @@ tax amount.
 | `apiToken`    | `OSTAX_API_TOKEN`     | —       | Optional. Sent as the `X-API-Key` header. Most self-hosted deployments don't need this. |
 | `failHard`    | `OSTAX_FAIL_HARD=1`   | `false` | When `true`, engine errors throw (Vendure surfaces as order error). Default `false` returns `[]` + warns. |
 | `timeoutMs`   | `OSTAX_TIMEOUT_MS`    | `5000`  | Per-request timeout in milliseconds. |
+| `categoryByTaxCategoryName` | — | `{}` | Map Vendure `TaxCategory.name` → OST category. See "Tax category mapping" below. |
+| `defaultCategory` | — | `'general'` | OST category for lines whose TaxCategory name doesn't appear in the map. Set to `''` (empty string) to make unmapped lines non-taxable. |
 
 Options passed to `init()` take priority over env vars.
+
+### Tax category mapping (v1.1.0+)
+
+The OST engine accepts a `category` per line item and applies
+category-specific rules — clothing exemptions in some states,
+groceries usually exempt, prescription drugs always exempt, etc.
+Map each of your Vendure `TaxCategory` records to one of OST's
+six categories so the engine can apply the right rules.
+
+**OST categories (the values in the map):**
+
+| Value | Use for |
+|-------|---------|
+| `'general'` | General merchandise (default) |
+| `'clothing'` | Apparel (PA, MN, NJ exempt; rules vary) |
+| `'groceries'` | Unprepared food (most states exempt or reduced) |
+| `'prescription_drugs'` | Rx drugs (universally exempt) |
+| `'prepared_food'` | Restaurant / hot food (often higher rate) |
+| `'digital_goods'` | Digital downloads (varies by state) |
+| `''` (empty string) | **Skip the line entirely** — non-taxable |
+
+**Worked example — a mixed retailer:**
+
+In the Vendure Admin UI, create a `TaxCategory` for each
+product class you sell ("Clothing", "Food", "Digital",
+"Gift Cards", and the existing "Standard"). Assign each
+ProductVariant to the right category as you create it.
+
+Then in `vendure-config.ts`:
+
+```ts
+OpenSalesTaxPlugin.init({
+  apiUrl: process.env.OSTAX_API_URL!,
+  categoryByTaxCategoryName: {
+    'Clothing':       'clothing',
+    'Food':           'groceries',
+    'Digital':        'digital_goods',
+    'Gift Cards':     '',           // non-taxable; engine never called
+    // 'Standard' isn't listed → falls back to defaultCategory
+  },
+  defaultCategory: 'general',
+}),
+```
+
+A merchant whose entire catalog is clothing can skip the
+mapping and just set `defaultCategory: 'clothing'`.
+
+**Validation:** invalid values throw at plugin init — you'll
+see the error at server boot, not at first checkout. Valid
+values are listed in the table above.
+
+**Migration from v1.0:** zero config required. v1.0 hardcoded
+`category: 'general'` for every line; v1.1's defaults reproduce
+that behavior exactly. Add the mapping when you're ready.
 
 ## How it works
 

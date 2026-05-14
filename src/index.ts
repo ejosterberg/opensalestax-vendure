@@ -28,4 +28,4 @@ export {
   type JurisdictionRate,
   type HealthResponse,
 } from './lib/ostax-client';
-export type { OpenSalesTaxPluginOptions, LoadedConfig } from './types';
+export type { OpenSalesTaxPluginOptions, OpenSalesTaxCategory, LoadedConfig } from './types';

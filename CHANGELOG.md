@@ -25,6 +25,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Re-export `OstaxTaxZoneStrategy` from `src/index.ts` for
   advanced users who want to subclass it.
 - ADR-004 documenting the supersession of ADR-002.
+- **Per-product OST category mapping.** Two new
+  `OpenSalesTaxPlugin.init({...})` options:
+  - `categoryByTaxCategoryName: Record<string, OpenSalesTaxCategory>`
+    maps Vendure `TaxCategory.name` → one of OST's six categories
+    (`general`, `clothing`, `groceries`, `prescription_drugs`,
+    `prepared_food`, `digital_goods`) or `''` to skip the line
+    (non-taxable).
+  - `defaultCategory: OpenSalesTaxCategory` is the fallback when
+    a line's TaxCategory name doesn't match the map. Default
+    `'general'` (preserves v1.0 behavior).
+  - Validation: invalid OST category values throw at plugin
+    init with a clear error listing every bad pairing.
+  - New `OpenSalesTaxCategory` union type re-exported from
+    `src/index.ts` for type-safe `init()` calls.
+- ADR-005 documenting the API choice (mapping by
+  TaxCategory.name rather than id or custom field).
 
 ### Changed
 - README quickstart step 4 ("Configure a US tax zone") is now

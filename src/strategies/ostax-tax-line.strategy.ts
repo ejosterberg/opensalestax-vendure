@@ -15,13 +15,16 @@ import {
   type CalculateRequest,
   type CalculateResponse,
 } from '../lib/ostax-client';
-import type { LoadedConfig, OpenSalesTaxPluginOptions } from '../types';
+import type {
+  LoadedConfig,
+  OpenSalesTaxCategory,
+  OpenSalesTaxPluginOptions,
+} from '../types';
 
 const LOGGER_CTX = 'OpenSalesTaxPlugin';
 const ZIP_REGEX = /^\d{5}(-\d{4})?$/;
 const SUPPORTED_CURRENCY = 'USD';
 const SUPPORTED_COUNTRY = 'US';
-const DEFAULT_CATEGORY = 'general';
 
 /**
  * Vendure `TaxLineCalculationStrategy` that routes tax calculation
@@ -120,11 +123,21 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
     }
     const zip5 = postalCode.slice(0, 5);
 
+    // Resolve the OST category for this line. Empty string = skip.
+    const category = this.resolveCategory(args);
+    if (category === '') {
+      Logger.debug(
+        `skip: tax_category=${args.applicableTaxRate?.category?.name ?? 'unmapped'} mapped_to_skip`,
+        LOGGER_CTX,
+      );
+      return [];
+    }
+
     // Build a single-line OST request for this order line.
     const amountStr = centsToDecimalString(orderLine.proratedUnitPrice);
     const request: CalculateRequest = {
       address: { zip5 },
-      line_items: [{ amount: amountStr, category: DEFAULT_CATEGORY }],
+      line_items: [{ amount: amountStr, category }],
     };
 
     let response: CalculateResponse;
@@ -151,6 +164,18 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
     }
 
     return taxLines;
+  }
+
+  /**
+   * Maps the order line's `applicableTaxRate.category.name` to one of
+   * OST's six categories (or `''` for skip) via the
+   * `categoryByTaxCategoryName` plugin option, with fallback to
+   * `defaultCategory`.
+   */
+  private resolveCategory(args: CalculateTaxLinesArgs): OpenSalesTaxCategory {
+    const name = args.applicableTaxRate?.category?.name;
+    const mapped = name === undefined ? undefined : this.config.categoryByTaxCategoryName[name];
+    return mapped ?? this.config.defaultCategory;
   }
 
   private handleError(err: unknown): TaxLine[] {
