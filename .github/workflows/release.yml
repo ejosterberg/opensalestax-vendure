@@ -1,50 +1,77 @@
 name: release
 
+# Publishes the Vendure plugin to NPM. Two triggers:
+#   * workflow_dispatch — manual button on the Actions page (rare; use
+#     for republish from main HEAD without cutting a new tag).
+#   * push: tags: ['v*.*.*'] — automatic publish when a vX.Y.Z tag is
+#     pushed. This is the day-to-day flow:
+#       npm version patch && git push --follow-tags
+#
+# Auth: NPM Trusted Publishing (OIDC). No long-lived NPM_TOKEN required —
+# the workflow exchanges a GitHub OIDC token for a short-lived NPM auth
+# token at publish time. Configure the trusted publisher on npmjs.com:
+#   https://www.npmjs.com/package/@ejosterberg/vendure-plugin-opensalestax/access
+#   organization: ejosterberg
+#   repository:   opensalestax-vendure
+#   workflow:     release.yml
+#   environment:  npm-publish        (must match the `environment:` below)
+#
+# And the matching GitHub Environment must exist:
+#   https://github.com/ejosterberg/opensalestax-vendure/settings/environments
+#   New environment → name: npm-publish (no protection rules required)
+#
+# See ~/.claude/npm-trusted-publishing-playbook.md for the full setup
+# walkthrough + common-failure-mode catalog.
+
 on:
-  push:
-    tags: ["v*.*.*"]
   workflow_dispatch:
     inputs:
       ref:
         description: "Tag or branch to publish (e.g. v1.1.0)"
         required: true
         default: "main"
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+  id-token: write   # required for OIDC trusted publishing + provenance
 
 jobs:
   publish:
+    name: publish to NPM
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write   # required for npm OIDC + provenance
-
+    timeout-minutes: 10
+    # Binds this job to the `npm-publish` GitHub Environment so the OIDC
+    # token's `environment` claim is populated. NPM's Trusted Publisher
+    # validator matches the claim against the saved config; both must
+    # be "npm-publish" or both empty.
+    environment: npm-publish
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          # Node 24 LTS ships npm 11.x in its toolcache. Trusted
+          # Publishing requires npm >= 11.5; Node 22's bundled npm 10.9.7
+          # silently 404s the publish handshake (provenance signs fine
+          # but the publish itself falls back to no-auth and NPM
+          # rejects). Diagnosed and verified in opensalestax-saleor
+          # v1.0.3 — see the playbook for the reproducer.
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
           cache: npm
 
-      - name: Install
+      - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Type check
-        run: npm run typecheck
-
-      - name: Test
-        run: npm test
-
-      - name: Audit (production deps, high+)
-        run: npm run audit
+      - name: Quality gate (lint + typecheck + tests + audit)
+        run: npm run check
 
       - name: Build
         run: npm run build
 
-      - name: Publish to npm (OIDC, provenance)
+      - name: Publish (trusted publishing + provenance)
         run: npm publish --provenance --access public
