@@ -10,12 +10,11 @@ import {
 
 import { loadConfig } from '../lib/config';
 import {
-  OpenSalesTaxAPIError,
+  OpenSalesTaxApiError,
   OpenSalesTaxClient,
-  type Address,
-  type CalculationResult,
-  type LineItem,
-} from '@ejosterberg/opensalestax';
+  type CalculateRequest,
+  type CalculateResponse,
+} from '../lib/ostax-client';
 import type {
   LoadedConfig,
   OpenSalesTaxCategory,
