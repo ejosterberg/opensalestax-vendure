@@ -143,8 +143,53 @@ tax amount.
 | `timeoutMs`   | `OSTAX_TIMEOUT_MS`    | `5000`  | Per-request timeout in milliseconds. |
 | `categoryByTaxCategoryName` | — | `{}` | Map Vendure `TaxCategory.name` → OST category. See "Tax category mapping" below. |
 | `defaultCategory` | — | `'general'` | OST category for lines whose TaxCategory name doesn't appear in the map. Set to `''` (empty string) to make unmapped lines non-taxable. |
+| `enabledStates` | — | — | Allowlist of US state codes (uppercase 2-letter). When set, the plugin computes only for orders shipping to one of these. See "Per-state nexus filter" below. |
+| `disabledStates` | — | — | Denylist of US state codes. Mutually exclusive with `enabledStates`. |
 
 Options passed to `init()` take priority over env vars.
+
+### Per-state nexus filter (v1.2.0+)
+
+Sales-tax nexus is the legal threshold (physical presence,
+economic activity) that obligates a merchant to collect and
+remit tax in a state. **No US merchant has nexus in all 50
+states**, and the OpenSalesTax engine doesn't decide nexus for
+you — that's your call (or your accountant's). Use one of
+these options to tell the plugin where you collect:
+
+```ts
+// Pattern 1 — allowlist: most small merchants
+OpenSalesTaxPlugin.init({
+  apiUrl: process.env.OSTAX_API_URL!,
+  enabledStates: ['MN', 'WI', 'IA'],   // collect only in these 3
+}),
+
+// Pattern 2 — denylist: larger merchants with broad footprints
+OpenSalesTaxPlugin.init({
+  apiUrl: process.env.OSTAX_API_URL!,
+  disabledStates: ['MT', 'WY'],   // skip these; collect everywhere else
+}),
+```
+
+When the order's `shippingAddress.province` doesn't match the
+configured filter, the strategy returns `[]` and Vendure's
+default `TaxRate` pipeline takes over (typically zero tax for
+a US-only merchant).
+
+**Validation**: state codes must be uppercase 2-letter ISO
+3166-2 subdivision codes (the same format Vendure's stock
+checkout form populates). Invalid entries (lowercase, full
+names, non-letter) throw at plugin init with a list of bad
+codes. Setting both `enabledStates` and `disabledStates`
+throws.
+
+**Empty array** (`enabledStates: []`) is treated as no filter
+(footgun mitigation). To disable the plugin entirely, remove
+it from your `plugins` array.
+
+**Migration from v1.1**: zero config required. v1.1 computed
+for every US ZIP (no nexus filtering); v1.2's defaults
+preserve that. Add the filter when you're ready.
 
 ### Tax category mapping (v1.1.0+)
 

@@ -265,6 +265,118 @@ describe('loadConfig', () => {
     });
   });
 
+  describe('nexus filter', () => {
+    it('defaults both lists to null when not provided', () => {
+      const cfg = loadConfig({ apiUrl: 'https://x.test' }, emptyEnv);
+      expect(cfg.enabledStates).toBeNull();
+      expect(cfg.disabledStates).toBeNull();
+    });
+
+    it('accepts a valid enabledStates list and returns a frozen Set', () => {
+      const cfg = loadConfig(
+        { apiUrl: 'https://x.test', enabledStates: ['MN', 'WI', 'IA'] },
+        emptyEnv,
+      );
+      expect(cfg.enabledStates).toBeInstanceOf(Set);
+      expect(cfg.enabledStates?.has('MN')).toBe(true);
+      expect(cfg.enabledStates?.has('WI')).toBe(true);
+      expect(cfg.enabledStates?.has('CA')).toBe(false);
+      expect(Object.isFrozen(cfg.enabledStates)).toBe(true);
+    });
+
+    it('accepts a valid disabledStates list', () => {
+      const cfg = loadConfig(
+        { apiUrl: 'https://x.test', disabledStates: ['CA', 'NY'] },
+        emptyEnv,
+      );
+      expect(cfg.disabledStates?.has('CA')).toBe(true);
+      expect(cfg.disabledStates?.has('MN')).toBe(false);
+    });
+
+    it('throws when both enabledStates and disabledStates are set', () => {
+      expect(() =>
+        loadConfig(
+          {
+            apiUrl: 'https://x.test',
+            enabledStates: ['MN'],
+            disabledStates: ['CA'],
+          },
+          emptyEnv,
+        ),
+      ).toThrow(/mutually exclusive/i);
+    });
+
+    it('treats empty enabledStates as null (no filter, footgun mitigation)', () => {
+      const cfg = loadConfig(
+        { apiUrl: 'https://x.test', enabledStates: [] },
+        emptyEnv,
+      );
+      expect(cfg.enabledStates).toBeNull();
+    });
+
+    it('treats empty disabledStates as null', () => {
+      const cfg = loadConfig(
+        { apiUrl: 'https://x.test', disabledStates: [] },
+        emptyEnv,
+      );
+      expect(cfg.disabledStates).toBeNull();
+    });
+
+    it('throws on lowercase state code', () => {
+      expect(() =>
+        loadConfig({ apiUrl: 'https://x.test', enabledStates: ['mn'] }, emptyEnv),
+      ).toThrow(/invalid state codes/i);
+    });
+
+    it('throws on 1-letter state code', () => {
+      expect(() =>
+        loadConfig({ apiUrl: 'https://x.test', enabledStates: ['M'] }, emptyEnv),
+      ).toThrow(/invalid state codes/i);
+    });
+
+    it('throws on 3-letter state code', () => {
+      expect(() =>
+        loadConfig({ apiUrl: 'https://x.test', enabledStates: ['MIN'] }, emptyEnv),
+      ).toThrow(/invalid state codes/i);
+    });
+
+    it('throws on numeric "state code"', () => {
+      expect(() =>
+        loadConfig({ apiUrl: 'https://x.test', enabledStates: ['12'] }, emptyEnv),
+      ).toThrow(/invalid state codes/i);
+    });
+
+    it('error message lists every bad code, not just the first', () => {
+      let err: unknown;
+      try {
+        loadConfig(
+          {
+            apiUrl: 'https://x.test',
+            disabledStates: ['CA', 'mn', 'NYS', 'TX'],
+          },
+          emptyEnv,
+        );
+      } catch (e) {
+        err = e;
+      }
+      expect(err).toBeInstanceOf(Error);
+      const msg = err instanceof Error ? err.message : '';
+      expect(msg).toContain('mn');
+      expect(msg).toContain('NYS');
+      expect(msg).not.toContain('CA');
+      expect(msg).not.toContain('TX');
+    });
+
+    it('validates disabledStates with the same rules', () => {
+      expect(() =>
+        loadConfig(
+          { apiUrl: 'https://x.test', disabledStates: ['ca'] },
+          emptyEnv,
+        ),
+      ).toThrow(/invalid state codes/i);
+    });
+  });
+
   describe('defaultCategory', () => {
     it("defaults to 'general'", () => {
       const cfg = loadConfig({ apiUrl: 'https://x.test' }, emptyEnv);

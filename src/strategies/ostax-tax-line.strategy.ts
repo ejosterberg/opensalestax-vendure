@@ -10,11 +10,12 @@ import {
 
 import { loadConfig } from '../lib/config';
 import {
-  OpenSalesTaxApiError,
+  OpenSalesTaxAPIError,
   OpenSalesTaxClient,
-  type CalculateRequest,
-  type CalculateResponse,
-} from '../lib/ostax-client';
+  type Address,
+  type CalculationResult,
+  type LineItem,
+} from '@ejosterberg/opensalestax';
 import type {
   LoadedConfig,
   OpenSalesTaxCategory,
@@ -122,6 +123,23 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
       return [];
     }
     const zip5 = postalCode.slice(0, 5);
+
+    // Gate 4: per-state nexus filter (v1.2.0). Allowlist takes precedence
+    // when set; otherwise denylist; if neither, no filter (v1.1 behavior).
+    const province = address.province ?? undefined;
+    if (this.config.enabledStates !== null) {
+      if (province === undefined || !this.config.enabledStates.has(province)) {
+        Logger.debug(`skip: nexus_filter province=${province ?? 'none'}`, LOGGER_CTX);
+        return [];
+      }
+    } else if (
+      this.config.disabledStates !== null &&
+      province !== undefined &&
+      this.config.disabledStates.has(province)
+    ) {
+      Logger.debug(`skip: nexus_filter province=${province}`, LOGGER_CTX);
+      return [];
+    }
 
     // Resolve the OST category for this line. Empty string = skip.
     const category = this.resolveCategory(args);

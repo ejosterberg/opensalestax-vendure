@@ -81,6 +81,37 @@ export interface OpenSalesTaxPluginOptions {
    * make all unmapped lines non-taxable by default.
    */
   defaultCategory?: OpenSalesTaxCategory;
+
+  /**
+   * Allowlist of US state codes (ISO 3166-2 subdivision codes,
+   * uppercase 2-letter — e.g. 'MN', 'WI'). When set, the plugin
+   * computes tax only for orders shipping to one of these states;
+   * orders to other states return `[]` so Vendure's default
+   * `TaxRate` pipeline takes over.
+   *
+   * Mutually exclusive with `disabledStates` — setting both throws
+   * at plugin init.
+   *
+   * Empty array is treated as `undefined` (no filter) — footgun
+   * mitigation. To disable the plugin for everyone, remove it
+   * from your `plugins` array instead.
+   *
+   * @example
+   * enabledStates: ['MN', 'WI', 'IA']  // collect only in those 3 states
+   */
+  enabledStates?: string[];
+
+  /**
+   * Denylist of US state codes (same format as `enabledStates`).
+   * When set, the plugin returns `[]` for orders shipping to one
+   * of these states; orders elsewhere compute as normal.
+   *
+   * Mutually exclusive with `enabledStates`.
+   *
+   * @example
+   * disabledStates: ['MT', 'WY']  // skip these two; collect everywhere else
+   */
+  disabledStates?: string[];
 }
 
 /**
@@ -94,4 +125,8 @@ export interface LoadedConfig {
   readonly timeoutMs: number;
   readonly categoryByTaxCategoryName: Readonly<Record<string, OpenSalesTaxCategory>>;
   readonly defaultCategory: OpenSalesTaxCategory;
+  /** `null` = no filter; non-null Set = allowlist of US state codes. */
+  readonly enabledStates: ReadonlySet<string> | null;
+  /** `null` = no filter; non-null Set = denylist of US state codes. */
+  readonly disabledStates: ReadonlySet<string> | null;
 }

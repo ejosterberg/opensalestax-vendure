@@ -18,6 +18,7 @@ function buildArgs(overrides: {
   currencyCode?: string;
   countryCode?: string | undefined;
   postalCode?: string | undefined;
+  province?: string | undefined;
   proratedUnitPrice?: number;
   taxCategoryName?: string;
 }): CalculateTaxLinesArgs {
@@ -27,6 +28,7 @@ function buildArgs(overrides: {
     shippingAddress: {
       countryCode: overrides.countryCode,
       postalCode: overrides.postalCode,
+      province: overrides.province,
     },
   } as Partial<Order> as Order;
 
@@ -77,6 +79,8 @@ describe('OstaxTaxLineStrategy', () => {
     failHard?: boolean;
     categoryByTaxCategoryName?: Record<string, string>;
     defaultCategory?: string;
+    enabledStates?: string[];
+    disabledStates?: string[];
   } = {}) {
     // The init() probe will hit /v1/health — answer it so init succeeds.
     nock(BASE_URL).get('/v1/health').reply(200, {
@@ -94,6 +98,8 @@ describe('OstaxTaxLineStrategy', () => {
       ...(opts.defaultCategory !== undefined
         ? { defaultCategory: opts.defaultCategory as never }
         : {}),
+      ...(opts.enabledStates !== undefined ? { enabledStates: opts.enabledStates } : {}),
+      ...(opts.disabledStates !== undefined ? { disabledStates: opts.disabledStates } : {}),
     });
     await strategy.init(fakeInjector);
     return strategy;
@@ -388,6 +394,112 @@ describe('OstaxTaxLineStrategy', () => {
         }),
       );
       expect(lines).toEqual([]);
+    });
+  });
+
+  describe('nexus filter (phase 04)', () => {
+    it('enabledStates includes ship-to: engine called', async () => {
+      const strategy = await makeStrategy({ enabledStates: ['MN', 'WI'] });
+      nock(BASE_URL)
+        .post('/v1/calculate')
+        .reply(200, sampleEngineResponse([{ type: 'STATE', name: 'Minnesota', rate_pct: '6.875' }]));
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          province: 'MN',
+        }),
+      );
+      expect(lines).toHaveLength(1);
+    });
+
+    it('enabledStates does NOT include ship-to: returns [] without engine call', async () => {
+      const strategy = await makeStrategy({ enabledStates: ['MN', 'WI'] });
+      // No nock interceptor — if engine called, the test fails with unmatched request
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '90210',
+          province: 'CA',
+        }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('enabledStates set + ship-to has no province: returns [] (conservative)', async () => {
+      const strategy = await makeStrategy({ enabledStates: ['MN'] });
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          province: undefined,
+        }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('disabledStates includes ship-to: returns [] without engine call', async () => {
+      const strategy = await makeStrategy({ disabledStates: ['CA', 'NY'] });
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '90210',
+          province: 'CA',
+        }),
+      );
+      expect(lines).toEqual([]);
+    });
+
+    it('disabledStates does NOT include ship-to: engine called', async () => {
+      const strategy = await makeStrategy({ disabledStates: ['CA', 'NY'] });
+      nock(BASE_URL)
+        .post('/v1/calculate')
+        .reply(200, sampleEngineResponse([{ type: 'STATE', name: 'Minnesota', rate_pct: '6.875' }]));
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          province: 'MN',
+        }),
+      );
+      expect(lines).toHaveLength(1);
+    });
+
+    it('disabledStates set + no province: engine called (denylist does not catch unknown)', async () => {
+      const strategy = await makeStrategy({ disabledStates: ['CA'] });
+      nock(BASE_URL)
+        .post('/v1/calculate')
+        .reply(200, sampleEngineResponse([{ type: 'STATE', name: 'Minnesota', rate_pct: '6.875' }]));
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '55403',
+          province: undefined,
+        }),
+      );
+      expect(lines).toHaveLength(1);
+    });
+
+    it('neither option set: engine called for any US ship-to (preserves v1.1)', async () => {
+      const strategy = await makeStrategy();
+      nock(BASE_URL)
+        .post('/v1/calculate')
+        .reply(200, sampleEngineResponse([{ type: 'STATE', name: 'Texas', rate_pct: '6.25' }]));
+      const lines = await strategy.calculate(
+        buildArgs({
+          currencyCode: 'USD',
+          countryCode: 'US',
+          postalCode: '78701',
+          province: 'TX',
+        }),
+      );
+      expect(lines).toHaveLength(1);
     });
   });
 

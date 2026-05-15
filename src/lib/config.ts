@@ -22,6 +22,33 @@ function formatValidCategories(): string {
   return [...VALID_CATEGORIES].map((c) => (c === '' ? "'' (skip line)" : c)).join(', ');
 }
 
+/** US state codes are uppercase 2-letter (ISO 3166-2 subdivision). */
+const STATE_CODE_REGEX = /^[A-Z]{2}$/;
+
+/**
+ * Validates a state-code list and returns a frozen Set, or `null`
+ * when the input is undefined/empty. Throws on any invalid code,
+ * with all bad codes listed in the error message.
+ */
+function normalizeStateList(
+  raw: string[] | undefined,
+  fieldName: string,
+): ReadonlySet<string> | null {
+  if (raw === undefined || raw.length === 0) return null;
+  const invalid = raw.filter((s) => !STATE_CODE_REGEX.test(s));
+  if (invalid.length > 0) {
+    const quoted = invalid.map((s) => `"${s}"`).join(', ');
+    throw new Error(
+      '@ejosterberg/vendure-plugin-opensalestax: invalid state codes in ' +
+        `${fieldName}: ${quoted}. ` +
+        'Use uppercase 2-letter ISO 3166-2 codes (e.g. "MN", "WI").',
+    );
+  }
+  const set = new Set(raw);
+  Object.freeze(set);
+  return set;
+}
+
 /**
  * Merges `OpenSalesTaxPlugin.init({...})` options with environment
  * variable defaults and validates the result.
@@ -110,6 +137,16 @@ export function loadConfig(
     );
   }
 
+  // Per-state nexus filter: validate, normalize to frozen Set, enforce mutex.
+  const enabledStates = normalizeStateList(options.enabledStates, 'enabledStates');
+  const disabledStates = normalizeStateList(options.disabledStates, 'disabledStates');
+  if (enabledStates !== null && disabledStates !== null) {
+    throw new Error(
+      '@ejosterberg/vendure-plugin-opensalestax: enabledStates and ' +
+        'disabledStates are mutually exclusive — set one or the other, not both.',
+    );
+  }
+
   return Object.freeze({
     apiUrl,
     apiToken,
@@ -117,6 +154,8 @@ export function loadConfig(
     timeoutMs,
     categoryByTaxCategoryName,
     defaultCategory,
+    enabledStates,
+    disabledStates,
   });
 }
 

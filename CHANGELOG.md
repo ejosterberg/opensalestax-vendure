@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-14
+
+### Added
+- **Per-state nexus filter.** Two new mutually-exclusive
+  `OpenSalesTaxPlugin.init({...})` options:
+  - `enabledStates: string[]` — allowlist of US state codes;
+    when set, the strategy computes tax only for orders
+    shipping to one of these states.
+  - `disabledStates: string[]` — denylist; the strategy
+    returns `[]` for orders shipping to one of these.
+- State-code validation at plugin init: must be uppercase
+  2-letter ISO 3166-2 codes. Invalid entries throw at boot
+  with all bad codes listed; setting both options throws.
+- Empty array on either option is normalized to `null` (no
+  filter) — footgun mitigation.
+- ADR-006 documenting the API choice (allowlist + denylist
+  + mutex + uppercase validation).
+- 19 new unit tests (108 total passing).
+
+### Compatibility
+- Non-breaking. Defaults preserve v1.1.0 behavior (compute
+  for every US ship-to). Add the filter when you're ready.
+
 ## [1.1.0] - 2026-05-13
 
 ### Added
@@ -115,7 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   descriptions, product names, and customer email are never
   logged.
 
-[Unreleased]: https://github.com/ejosterberg/opensalestax-vendure/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/ejosterberg/opensalestax-vendure/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/ejosterberg/opensalestax-vendure/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/ejosterberg/opensalestax-vendure/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/ejosterberg/opensalestax-vendure/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v0.1.0
