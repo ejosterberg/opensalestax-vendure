@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-14
+
+Drop the embedded `OpenSalesTaxClient` in favor of the standalone
+`@ejosterberg/opensalestax` SDK (v0.1.0+). Constitution §6 / new-
+connector playbook trigger ("extract when a third TS connector
+lands" — we have four).
+
+No behavior change for merchants. The HTTP wire contract with the
+OpenSalesTax engine is identical; only the package boundary moves.
+
+### Changed
+- Depend on `@ejosterberg/opensalestax@^0.1.0` instead of the
+  embedded `src/lib/ostax-client.ts`.
+- Pass `allowPrivate: true` to the SDK client — Vendure
+  deployments commonly run the engine on the same private
+  network. The SDK's SSRF defense is off by default for this
+  deployment shape.
+- Strategy properties accessed by the new SDK's TS surface:
+  - `health.database_connected` → `health.databaseConnected`
+  - `jurisdiction.rate_pct` → `jurisdiction.ratePct`
+  - Error class `OpenSalesTaxApiError.status` →
+    `OpenSalesTaxAPIError.statusCode`
+- `init()` uses the SDK's never-throws `healthCheck()` directly,
+  removing the local try/catch. The probe behavior is identical:
+  log on success, warn on failure, continue booting.
+- `calculate()` switched from a single `CalculateRequest` body to
+  the SDK's `(address, lineItems)` signature.
+- `src/index.ts` re-exports `OpenSalesTaxClient` /
+  `OpenSalesTaxAPIError` / `Address` / `LineItem` / etc. from the
+  SDK so consumers that imported them from this plugin keep
+  working with one rename (`OpenSalesTaxApiError` →
+  `OpenSalesTaxAPIError`).
+
+### Removed
+- `src/lib/ostax-client.ts` (now lives in
+  `@ejosterberg/opensalestax`)
+- `tests/unit/ostax-client.test.ts` (the SDK's own test suite
+  covers this surface)
+
+### Migration
+
+For most merchants: nothing to do. The plugin's public API
+(`OpenSalesTaxPlugin.init({...})`) is unchanged. The one rename
+that matters is downstream code that imported the error class
+from this plugin:
+
+```diff
+-import { OpenSalesTaxApiError } from '@ejosterberg/vendure-plugin-opensalestax';
++import { OpenSalesTaxAPIError } from '@ejosterberg/vendure-plugin-opensalestax';
+-} catch (e: OpenSalesTaxApiError) { console.log(e.status); }
++} catch (e: OpenSalesTaxAPIError) { console.log(e.statusCode); }
+```
+
+`CalculateRequest` / `CalculateResponse` / `CalculateLineItem` are
+no longer re-exported (the SDK doesn't expose `CalculateRequest`
+at all — `calculate()` takes `(address, lineItems)` directly).
+The replacements are `Address` + `LineItem` + `CalculationResult`,
+all re-exported from this package.
+
 ## [1.2.0] - 2026-05-14
 
 ### Added

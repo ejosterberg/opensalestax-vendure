@@ -60,8 +60,10 @@ function sampleEngineResponse(jurisdictions: Array<{ type: string; name: string;
         tax: '0',
         rate_pct: '0',
         jurisdictions: jurisdictions.map((j) => ({ ...j, tax: '0' })),
+        note: null,
       },
     ],
+    disclaimer: 'Calculation only; not legal or tax advice.',
   };
 }
 

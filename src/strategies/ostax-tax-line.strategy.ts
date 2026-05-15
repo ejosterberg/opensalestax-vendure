@@ -10,11 +10,12 @@ import {
 
 import { loadConfig } from '../lib/config';
 import {
-  OpenSalesTaxApiError,
+  OpenSalesTaxAPIError,
   OpenSalesTaxClient,
-  type CalculateRequest,
-  type CalculateResponse,
-} from '../lib/ostax-client';
+  type Address,
+  type CalculationResult,
+  type LineItem,
+} from '@ejosterberg/opensalestax';
 import type {
   LoadedConfig,
   OpenSalesTaxCategory,
@@ -63,9 +64,18 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
 
   async init(_injector: Injector): Promise<void> {
     this.config = loadConfig(this.initialOptions ?? {});
-    const clientOptions: { baseUrl: string; timeoutMs: number; apiKey?: string } = {
+    const clientOptions: {
+      baseUrl: string;
+      timeoutMs: number;
+      apiKey?: string;
+      allowPrivate: boolean;
+    } = {
       baseUrl: this.config.apiUrl,
       timeoutMs: this.config.timeoutMs,
+      // Vendure deployments commonly run the engine on the same
+      // private network. The SDK's SSRF defense is off by default
+      // for this deployment shape.
+      allowPrivate: true,
     };
     if (this.config.apiToken !== undefined) {
       clientOptions.apiKey = this.config.apiToken;
@@ -79,16 +89,17 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
       );
     }
 
-    try {
-      const health = await this.client.healthCheck();
+    // healthCheck() is never-throws: returns { ok, error?, version?,
+    // databaseConnected?, rttMs }. No try/catch needed.
+    const health = await this.client.healthCheck();
+    if (health.ok) {
       Logger.info(
-        `OpenSalesTax engine reachable: status=${health.status} version=${health.version} db=${health.database_connected}`,
+        `OpenSalesTax engine reachable: version=${health.version} db=${health.databaseConnected} rtt=${health.rttMs}ms`,
         LOGGER_CTX,
       );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+    } else {
       Logger.warn(
-        `OpenSalesTax engine health check failed at startup: ${message}. ` +
+        `OpenSalesTax engine health check failed at startup: ${health.error}. ` +
           `Strategy will still register; calls will ${this.config.failHard ? 'throw' : 'fall back to []'} until engine is reachable.`,
         LOGGER_CTX,
       );
@@ -152,14 +163,12 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
 
     // Build a single-line OST request for this order line.
     const amountStr = centsToDecimalString(orderLine.proratedUnitPrice);
-    const request: CalculateRequest = {
-      address: { zip5 },
-      line_items: [{ amount: amountStr, category }],
-    };
+    const ostAddress: Address = { zip5 };
+    const lineItems: LineItem[] = [{ amount: amountStr, category }];
 
-    let response: CalculateResponse;
+    let response: CalculationResult;
     try {
-      response = await this.client.calculate(request);
+      response = await this.client.calculate(ostAddress, lineItems);
     } catch (err) {
       return this.handleError(err);
     }
@@ -172,7 +181,7 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
 
     const taxLines: TaxLine[] = [];
     for (const j of line.jurisdictions) {
-      const rate = Number.parseFloat(j.rate_pct);
+      const rate = Number.parseFloat(j.ratePct);
       if (!Number.isFinite(rate) || rate <= 0) continue;
       taxLines.push({
         description: formatDescription(j.type, j.name),
@@ -196,7 +205,7 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
   }
 
   private handleError(err: unknown): TaxLine[] {
-    const status = err instanceof OpenSalesTaxApiError ? err.status : undefined;
+    const status = err instanceof OpenSalesTaxAPIError ? err.statusCode : undefined;
     const message = err instanceof Error ? err.message : String(err);
 
     if (this.config.failHard) {
