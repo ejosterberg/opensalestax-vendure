@@ -1,14 +1,23 @@
 # Current State — opensalestax-vendure
 
-**Last updated:** 2026-05-13 (v1.0.0 shipped to GitHub + NPM)
-**Status:** **v1.0.0 shipped.** Kickoff plan complete.
+**Last updated:** 2026-05-14 (v1.1.0 shipped to GitHub + NPM)
+**Status:** **v1.1.0 shipped via Trusted Publishing (OIDC + SLSA provenance).**
+Kickoff plan complete; phase-02 + phase-03 features bundled into
+v1.1.0. Next session picks from the v1.2 backlog.
 
-## What's shipped (v1.0.0)
+## What's shipped
+
+| Version | Date | Tag | NPM | Notes |
+|---------|------|-----|-----|-------|
+| v1.0.0 | 2026-05-13 | [v1.0.0](https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v1.0.0) | published | First production release; manual bootstrap publish (token + 2FA bypass) |
+| v1.1.0 | 2026-05-14 | [v1.1.0](https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v1.1.0) | published | TaxZoneStrategy + per-product category mapping; first OIDC + SLSA-provenance publish via release.yml |
 
 - GitHub: <https://github.com/ejosterberg/opensalestax-vendure>
-- GitHub release v1.0.0: <https://github.com/ejosterberg/opensalestax-vendure/releases/tag/v1.0.0>
-- NPM: <https://www.npmjs.com/package/@ejosterberg/vendure-plugin-opensalestax> (`@ejosterberg/vendure-plugin-opensalestax@1.0.0`, public, Apache-2.0)
-- Trusted Publisher + `release.yml` workflow configured for hands-off OIDC publishing of every release after v1.0.0
+- NPM: <https://www.npmjs.com/package/@ejosterberg/vendure-plugin-opensalestax>
+- Trusted Publisher (org=`ejosterberg`, repo=`opensalestax-vendure`,
+  workflow=`release.yml`, environment=`npm-publish`) is configured;
+  the matching GitHub Environment `npm-publish` exists. Release flow
+  is fully hands-off after `git push origin vX.Y.Z`.
 
 - `OpenSalesTaxPlugin` (`@VendurePlugin`-decorated) loadable in
   `vendure-config.ts`.
