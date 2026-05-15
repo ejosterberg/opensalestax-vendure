@@ -17,15 +17,20 @@ export { OpenSalesTaxPlugin } from './opensalestax.plugin';
 export { OstaxTaxLineStrategy } from './strategies/ostax-tax-line.strategy';
 export { OstaxTaxZoneStrategy } from './strategies/ostax-tax-zone.strategy';
 export { loadConfig } from './lib/config';
+// Re-export the SDK's public surface so downstream consumers can pull
+// types from this plugin without taking an explicit
+// `@ejosterberg/opensalestax` dep. Names mirror the SDK as of v0.1.0;
+// the old `CalculateRequest` / `CalculateResponse` / `CalculateLineItem`
+// names are replaced by SDK equivalents.
 export {
   OpenSalesTaxClient,
-  OpenSalesTaxApiError,
+  OpenSalesTaxAPIError,
   type OpenSalesTaxClientOptions,
-  type CalculateRequest,
-  type CalculateResponse,
+  type Address,
+  type LineItem,
+  type CalculationResult,
   type CalculatedLine,
-  type CalculateLineItem,
   type JurisdictionRate,
   type HealthResponse,
-} from './lib/ostax-client';
+} from '@ejosterberg/opensalestax';
 export type { OpenSalesTaxPluginOptions, OpenSalesTaxCategory, LoadedConfig } from './types';
