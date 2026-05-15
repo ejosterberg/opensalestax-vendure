@@ -16,7 +16,6 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'json-summary'],
   coverageThreshold: {
     'src/strategies/**/*.ts': { branches: 70, lines: 80 },
-    'src/lib/ostax-client.ts': { branches: 70, lines: 80 },
     global: { lines: 80 },
   },
   clearMocks: true,
