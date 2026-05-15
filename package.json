@@ -1,6 +1,6 @@
 {
   "name": "@ejosterberg/vendure-plugin-opensalestax",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Vendure plugin for destination-based US sales tax via the self-hosted OpenSalesTax engine.",
   "license": "Apache-2.0",
   "author": "Eric Osterberg <ejosterberg@gmail.com>",
