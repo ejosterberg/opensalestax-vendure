@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 #
 # Places a $100 USD order against the demo Vendure server with a
 # Minneapolis MN ship-to address, then prints the resulting taxLines
@@ -36,6 +36,6 @@ AUTH=(-H "Authorization: Bearer ${SHOP_TOKEN}")
 echo "[order] setCustomerForOrder ejosterberg+demo@example.test"
 shop '{"query":"mutation { setCustomerForOrder(input: { emailAddress: \"ejosterberg+demo@example.test\", firstName: \"Demo\", lastName: \"Customer\" }) { ... on Order { id customer { emailAddress } } ... on ErrorResult { errorCode message } } }"}' "${AUTH[@]}" | jq '.data'
 
-# Set the MN ship-to address — this is the trigger that exercises the OST plugin.
+# Set the MN ship-to address â€” this is the trigger that exercises the OST plugin.
 echo "[order] setOrderShippingAddress 100 N 6th St, Minneapolis MN 55403 US"
 shop '{"query":"mutation { setOrderShippingAddress(input: { streetLine1: \"100 N 6th St\", city: \"Minneapolis\", province: \"MN\", postalCode: \"55403\", countryCode: \"US\" }) { ... on Order { id totalWithTax lines { unitPrice unitPriceWithTax taxLines { description taxRate } } } ... on ErrorResult { errorCode message } } }"}' "${AUTH[@]}" | jq '.data'

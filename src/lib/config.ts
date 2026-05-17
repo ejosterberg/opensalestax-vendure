@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 
 import type { LoadedConfig, OpenSalesTaxCategory, OpenSalesTaxPluginOptions } from '../types';
 
@@ -143,7 +143,7 @@ export function loadConfig(
   if (enabledStates !== null && disabledStates !== null) {
     throw new Error(
       '@ejosterberg/vendure-plugin-opensalestax: enabledStates and ' +
-        'disabledStates are mutually exclusive — set one or the other, not both.',
+        'disabledStates are mutually exclusive â€” set one or the other, not both.',
     );
   }
 

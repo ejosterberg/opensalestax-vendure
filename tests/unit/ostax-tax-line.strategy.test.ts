@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 
 import nock from 'nock';
 import type {
@@ -84,7 +84,7 @@ describe('OstaxTaxLineStrategy', () => {
     enabledStates?: string[];
     disabledStates?: string[];
   } = {}) {
-    // The init() probe will hit /v1/health — answer it so init succeeds.
+    // The init() probe will hit /v1/health â€” answer it so init succeeds.
     nock(BASE_URL).get('/v1/health').reply(200, {
       status: 'ok',
       version: '0.55.4',
@@ -226,7 +226,7 @@ describe('OstaxTaxLineStrategy', () => {
       expect(lines[0]?.description).toContain('Minnesota');
     });
 
-    it('formats ProRated amount in dollars (cents → "X.XX")', async () => {
+    it('formats ProRated amount in dollars (cents â†’ "X.XX")', async () => {
       const strategy = await makeStrategy();
       nock(BASE_URL)
         .post('/v1/calculate', (body) => {
@@ -245,7 +245,7 @@ describe('OstaxTaxLineStrategy', () => {
       );
     });
 
-    it('handles single-digit cents correctly (5 cents → "0.05")', async () => {
+    it('handles single-digit cents correctly (5 cents â†’ "0.05")', async () => {
       const strategy = await makeStrategy();
       nock(BASE_URL)
         .post('/v1/calculate', (body) => {
@@ -372,7 +372,7 @@ describe('OstaxTaxLineStrategy', () => {
       const strategy = await makeStrategy({
         categoryByTaxCategoryName: { 'Gift Cards': '' },
       });
-      // No nock interceptor for /v1/calculate — if the engine is called, the
+      // No nock interceptor for /v1/calculate â€” if the engine is called, the
       // request will fail with an unmatched-request error and the test fails.
       const lines = await strategy.calculate(
         buildArgs({
@@ -418,7 +418,7 @@ describe('OstaxTaxLineStrategy', () => {
 
     it('enabledStates does NOT include ship-to: returns [] without engine call', async () => {
       const strategy = await makeStrategy({ enabledStates: ['MN', 'WI'] });
-      // No nock interceptor — if engine called, the test fails with unmatched request
+      // No nock interceptor â€” if engine called, the test fails with unmatched request
       const lines = await strategy.calculate(
         buildArgs({
           currencyCode: 'USD',

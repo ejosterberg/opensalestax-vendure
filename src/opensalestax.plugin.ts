@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 
 import { PluginCommonModule, VendurePlugin } from '@vendure/core';
 
@@ -24,7 +24,7 @@ import type { OpenSalesTaxPluginOptions } from './types';
  * };
  * ```
  *
- * Architecture (constitution §2 + §7):
+ * Architecture (constitution Â§2 + Â§7):
  *   - Pure in-process: no inbound HTTP routes, no webhooks, no JWT
  *   - Outbound only: calls the merchant's OpenSalesTax engine via HTTPS
  *   - Trust boundary is the merchant's Vendure host
@@ -42,7 +42,7 @@ import type { OpenSalesTaxPluginOptions } from './types';
   compatibility: '^3.0.0',
 })
 export class OpenSalesTaxPlugin {
-  // Backing field — writable only via init(). Public surface is readonly.
+  // Backing field â€” writable only via init(). Public surface is readonly.
   private static _options: OpenSalesTaxPluginOptions = {};
 
   /** Options captured by the most recent `init()` call. Read-only. */

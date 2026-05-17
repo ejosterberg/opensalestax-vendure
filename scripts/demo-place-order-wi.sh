@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 #
 # Same as demo-place-order.sh but ships to Milwaukee WI to test the
 # nexus filter. With enabledStates: ['MN'] configured, this order

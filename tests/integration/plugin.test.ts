@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 
 /**
  * Integration test for OpenSalesTaxPlugin.
@@ -50,7 +50,7 @@ registerInitializer(
 );
 
 describe('OpenSalesTaxPlugin (integration)', () => {
-  // The init() probe will hit /v1/health — answer it indefinitely.
+  // The init() probe will hit /v1/health â€” answer it indefinitely.
   beforeAll(() => {
     nock.disableNetConnect();
     // Allow connections to localhost so the test server can talk to itself.

@@ -47,7 +47,7 @@ merge.
 
 - TypeScript strict mode; no `any` without an inline
   justification comment
-- SPDX header (`// SPDX-License-Identifier: Apache-2.0`) on
+- SPDX header (`// SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later`) on
   every source file
 - JSDoc on every exported function / class
 - Structured logging only — never log customer addresses,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 
 /**
  * Public types for the @ejosterberg/vendure-plugin-opensalestax plugin.
@@ -22,10 +22,10 @@ export type OpenSalesTaxCategory =
  * Options accepted by `OpenSalesTaxPlugin.init({...})`.
  *
  * Merged with environment variables at plugin init time:
- *   - `apiUrl`     ← `OSTAX_API_URL`      (required; validated as http:/https:)
- *   - `apiToken`   ← `OSTAX_API_TOKEN`    (optional; sent as `X-API-Key`)
- *   - `failHard`   ← `OSTAX_FAIL_HARD=1`  (default `false` — fail-soft)
- *   - `timeoutMs`  ← `OSTAX_TIMEOUT_MS`   (default `5000`)
+ *   - `apiUrl`     â† `OSTAX_API_URL`      (required; validated as http:/https:)
+ *   - `apiToken`   â† `OSTAX_API_TOKEN`    (optional; sent as `X-API-Key`)
+ *   - `failHard`   â† `OSTAX_FAIL_HARD=1`  (default `false` â€” fail-soft)
+ *   - `timeoutMs`  â† `OSTAX_TIMEOUT_MS`   (default `5000`)
  *
  * Options passed explicitly via `init()` take priority over env vars.
  */
@@ -46,7 +46,7 @@ export interface OpenSalesTaxPluginOptions {
    * When true, engine errors throw (Vendure surfaces this as an order
    * error in the admin). When false (default), engine errors return
    * an empty `TaxLine[]` and Vendure's built-in `TaxRate` pipeline
-   * takes over (constitution §8 — fail-soft).
+   * takes over (constitution Â§8 â€” fail-soft).
    */
   failHard?: boolean;
 
@@ -56,13 +56,13 @@ export interface OpenSalesTaxPluginOptions {
   timeoutMs?: number;
 
   /**
-   * Maps Vendure `TaxCategory.name` → OST category. The strategy
+   * Maps Vendure `TaxCategory.name` â†’ OST category. The strategy
    * reads `args.applicableTaxRate.category.name` at calculation time
    * and looks it up here. Unmapped names fall back to
    * `defaultCategory`, then to `'general'`.
    *
    * Mapping a name to `''` (empty string) makes the strategy return
-   * `[]` for that line — non-taxable, OST is not called.
+   * `[]` for that line â€” non-taxable, OST is not called.
    *
    * @example
    * categoryByTaxCategoryName: {
@@ -84,15 +84,15 @@ export interface OpenSalesTaxPluginOptions {
 
   /**
    * Allowlist of US state codes (ISO 3166-2 subdivision codes,
-   * uppercase 2-letter — e.g. 'MN', 'WI'). When set, the plugin
+   * uppercase 2-letter â€” e.g. 'MN', 'WI'). When set, the plugin
    * computes tax only for orders shipping to one of these states;
    * orders to other states return `[]` so Vendure's default
    * `TaxRate` pipeline takes over.
    *
-   * Mutually exclusive with `disabledStates` — setting both throws
+   * Mutually exclusive with `disabledStates` â€” setting both throws
    * at plugin init.
    *
-   * Empty array is treated as `undefined` (no filter) — footgun
+   * Empty array is treated as `undefined` (no filter) â€” footgun
    * mitigation. To disable the plugin for everyone, remove it
    * from your `plugins` array instead.
    *
@@ -116,7 +116,7 @@ export interface OpenSalesTaxPluginOptions {
 
 /**
  * Frozen, validated configuration produced by `loadConfig()`.
- * Internal — do not depend on this shape from merchant code.
+ * Internal â€” do not depend on this shape from merchant code.
  */
 export interface LoadedConfig {
   readonly apiUrl: string;

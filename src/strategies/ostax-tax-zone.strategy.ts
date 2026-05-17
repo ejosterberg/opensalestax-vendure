@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 
 import { Logger } from '@vendure/core';
 import type { Channel, Order, RequestContext, TaxZoneStrategy, Zone } from '@vendure/core';
@@ -9,7 +9,7 @@ const SUPPORTED_COUNTRY = 'US';
 /**
  * Vendure `TaxZoneStrategy` implementation that auto-routes US shipping
  * orders to a Zone whose members include the United States as a country
- * region — without the merchant having to set
+ * region â€” without the merchant having to set
  * `channel.defaultTaxZone = US` manually.
  *
  * Behavior:

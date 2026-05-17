@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 
 import type { TaxLine } from '@vendure/common/lib/generated-types';
 import {
@@ -39,16 +39,16 @@ const SUPPORTED_COUNTRY = 'US';
  *   2. Vendure calls `calculate(args)` per `OrderLine` whenever order
  *      totals are recomputed.
  *
- * Gating (constitution §5):
- *   - `ctx.currencyCode === "USD"` — else return `[]`
- *   - `order.shippingAddress.countryCode === "US"` — else return `[]`
- *   - `order.shippingAddress.postalCode` matches `^\d{5}(-\d{4})?$` —
+ * Gating (constitution Â§5):
+ *   - `ctx.currencyCode === "USD"` â€” else return `[]`
+ *   - `order.shippingAddress.countryCode === "US"` â€” else return `[]`
+ *   - `order.shippingAddress.postalCode` matches `^\d{5}(-\d{4})?$` â€”
  *     else return `[]`
  *
  * On any of these gates returning `[]`, Vendure's built-in `TaxRate`
  * pipeline takes over.
  *
- * Error handling (constitution §8):
+ * Error handling (constitution Â§8):
  *   - Default fail-soft: engine errors return `[]` and log a warning
  *   - Opt-in fail-hard via `failHard: true` / `OSTAX_FAIL_HARD=1`:
  *     engine errors throw, surfacing as Vendure order errors
@@ -224,7 +224,7 @@ export class OstaxTaxLineStrategy implements TaxLineCalculationStrategy {
   }
 }
 
-/** Cents → "X.XX" decimal string (no thousands separator, no rounding). */
+/** Cents â†’ "X.XX" decimal string (no thousands separator, no rounding). */
 function centsToDecimalString(cents: number): string {
   const safe = Number.isFinite(cents) ? Math.round(cents) : 0;
   const sign = safe < 0 ? '-' : '';
@@ -239,7 +239,7 @@ function formatDescription(type: string, name: string): string {
   const safeName = (name ?? '').trim() || 'Sales Tax';
   const safeType = (type ?? '').trim();
   if (!safeType) return safeName;
-  // Title-case the type for display, e.g. "STATE" → "State".
+  // Title-case the type for display, e.g. "STATE" â†’ "State".
   const formattedType =
     safeType.charAt(0).toUpperCase() + safeType.slice(1).toLowerCase();
   return `${safeName} (${formattedType})`;

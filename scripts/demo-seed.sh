@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 #
 # Seeds the demo Vendure server with the minimum data needed to verify
 # OpenSalesTaxPlugin works end-to-end:
@@ -100,4 +100,4 @@ fi
 log "variant id: ${VARIANT_ID}"
 
 echo "${VARIANT_ID}" > /tmp/demo-variant-id
-echo "[seed] DONE — variant id ${VARIANT_ID} written to /tmp/demo-variant-id"
+echo "[seed] DONE â€” variant id ${VARIANT_ID} written to /tmp/demo-variant-id"

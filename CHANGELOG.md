@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-05-17
+
+### Changed
+
+- **Dual-licensed Apache-2.0 OR GPL-2.0-or-later.** Adds GPL-2.0-or-later as
+  an alternative license alongside the existing Apache-2.0 grant, enabling
+  downstream redistribution in GPL-only ecosystems (WordPress.org plugin
+  directory, OCA AGPL-track repositories) without giving up Apache
+  compatibility. License files reorganized: `LICENSE-APACHE.txt` (existing
+  Apache text, moved from `LICENSE`), `LICENSE-GPL.txt` (new, GNU GPL v2
+  text), `LICENSE` (new dual-declaration). SPDX headers updated across
+  source files. Brings this connector in line with the rest of the
+  OpenSalesTax portfolio's dual-licensing standard.
+
 ## [1.3.0] - 2026-05-14
 
 Drop the embedded `OpenSalesTaxClient` in favor of the standalone

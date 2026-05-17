@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
 
 import { Logger } from '@vendure/core';
 import type { Channel, Order, RequestContext, Zone } from '@vendure/core';
 
 import { OstaxTaxZoneStrategy } from '../../src/strategies/ostax-tax-zone.strategy';
 
-// Minimal fixture builders — typed via `as` casts so we don't have to
+// Minimal fixture builders â€” typed via `as` casts so we don't have to
 // instantiate the heavy real Vendure entities for unit tests.
 function buildZone(name: string, members: Array<{ type: string; code: string }>): Zone {
   return { name, members } as Partial<Zone> as Zone;
@@ -129,7 +129,7 @@ describe('OstaxTaxZoneStrategy', () => {
         { type: 'country', code: 'CA' },
       ];
 
-      // Same array reference → cache hit → returns the original (cached) zone
+      // Same array reference â†’ cache hit â†’ returns the original (cached) zone
       const second = strategy.determineTaxZone(ctx, zones, channel, buildOrder('US'));
       expect(second).toBe(mutableUsZone);
     });
@@ -150,7 +150,7 @@ describe('OstaxTaxZoneStrategy', () => {
       ];
       const zones2 = [mutableUsZone];
 
-      // New array → re-scan → no US match → fallback
+      // New array â†’ re-scan â†’ no US match â†’ fallback
       const second = strategy.determineTaxZone(ctx, zones2, channel, buildOrder('US'));
       expect(second).toBe(DEFAULT_ZONE);
     });
@@ -161,7 +161,7 @@ describe('OstaxTaxZoneStrategy', () => {
       const provinceOnlyZone = buildZone('USStates', [{ type: 'province', code: 'US' }]);
       const zones = [provinceOnlyZone];
       const result = strategy.determineTaxZone(ctx, zones, channel, buildOrder('US'));
-      // No matching country-type US member → falls back
+      // No matching country-type US member â†’ falls back
       expect(result).toBe(DEFAULT_ZONE);
     });
 
